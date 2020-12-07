@@ -18,12 +18,12 @@ toml = "*"
 reqwest = { version = "0.10", features = ["blocking"] }
 image = "0.23"
 anyhow = "1.0"
-wvr-data = {git = "https://github.com/gurkeclub/wvr-data.git"}
-wvr-io = {git = "https://github.com/gurkeclub/wvr-io.git"}
-wvr-com = {git = "https://github.com/gurkeclub/wvr-com.git"}
-wvr-image = {git = "https://github.com/gurkeclub/wvr-image.git"}
-wvr-video = {git = "https://github.com/gurkeclub/wvr-video.git"}
-wvr-cam = {git = "https://github.com/gurkeclub/wvr-cam.git"}
-wvr-shadertoy = {git = "https://github.com/gurkeclub/wvr-shadertoy.git"}
-wvr-midi = {git = "https://github.com/gurkeclub/wvr-midi.git"}
-wvr-rendering = {git = "https://github.com/gurkeclub/wvr-rendering.git"}
+wvr-data = {git = "https://github.com/gurkeclub/wvr-data.git", branch="main"}
+wvr-io = {git = "https://github.com/gurkeclub/wvr-io.git", branch="main"}
+wvr-com = {git = "https://github.com/gurkeclub/wvr-com.git", branch="main"}
+wvr-image = {git = "https://github.com/gurkeclub/wvr-image.git", branch="main"}
+wvr-video = {git = "https://github.com/gurkeclub/wvr-video.git", branch="main"}
+wvr-cam = {git = "https://github.com/gurkeclub/wvr-cam.git", branch="main"}
+wvr-shadertoy = {git = "https://github.com/gurkeclub/wvr-shadertoy.git", branch="main"}
+wvr-midi = {git = "https://github.com/gurkeclub/wvr-midi.git", branch="main"}
+wvr-rendering = {git = "https://github.com/gurkeclub/wvr-rendering.git", branch="main"}
