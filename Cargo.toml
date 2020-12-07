@@ -1,0 +1,29 @@
+[package]
+name = "wvr"
+version = "0.1.0"
+authors = ["gurke.club <contact@gurke.club>"]
+edition = "2018"
+
+[dependencies]
+glium = "0.27"
+midir = "0.5"
+serde_json = "1.0"
+serde =  {version="1.0", features = ["derive"] }
+serde_yaml = "0.8"
+ron = "0.6"
+message-io = "0.4"
+directories-next = "1.0"
+clap = "*"
+toml = "*"
+reqwest = { version = "0.10", features = ["blocking"] }
+image = "0.23"
+anyhow = "1.0"
+wvr-data = {git = "https://github.com/gurkeclub/wvr-data.git"}
+wvr-io = {git = "https://github.com/gurkeclub/wvr-io.git"}
+wvr-com = {git = "https://github.com/gurkeclub/wvr-com.git"}
+wvr-image = {git = "https://github.com/gurkeclub/wvr-image.git"}
+wvr-video = {git = "https://github.com/gurkeclub/wvr-video.git"}
+wvr-cam = {git = "https://github.com/gurkeclub/wvr-cam.git"}
+wvr-shadertoy = {git = "https://github.com/gurkeclub/wvr-shadertoy.git"}
+wvr-midi = {git = "https://github.com/gurkeclub/wvr-midi.git"}
+wvr-rendering = {git = "https://github.com/gurkeclub/wvr-rendering.git"}
