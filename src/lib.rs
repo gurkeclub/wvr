@@ -14,7 +14,7 @@ use glium::glutin::event_loop::EventLoop;
 use wvr_cam::cam::CamProvider;
 use wvr_data::config::project_config::{InputConfig, ProjectConfig};
 use wvr_image::image::PictureProvider;
-use wvr_io::InputProvider;
+use wvr_data::InputProvider;
 use wvr_midi::midi::controller::MidiProvider;
 use wvr_rendering::RGBAImageData;
 use wvr_rendering::ShaderView;

@@ -19,7 +19,6 @@ reqwest = { version = "0.10", features = ["blocking"] }
 image = "0.23"
 anyhow = "1.0"
 wvr-data = {git = "https://github.com/gurkeclub/wvr-data.git", branch="main"}
-wvr-io = {git = "https://github.com/gurkeclub/wvr-io.git", branch="main"}
 wvr-com = {git = "https://github.com/gurkeclub/wvr-com.git", branch="main"}
 wvr-image = {git = "https://github.com/gurkeclub/wvr-image.git", branch="main"}
 wvr-video = {git = "https://github.com/gurkeclub/wvr-video.git", branch="main"}
