@@ -8,13 +8,14 @@ use std::thread;
 
 use anyhow::{Context, Result};
 use clap::{App, Arg};
+use git2::Repository;
 
 use glium::glutin::event_loop::EventLoop;
 
 use wvr_cam::cam::CamProvider;
 use wvr_data::config::project_config::{InputConfig, ProjectConfig};
-use wvr_image::image::PictureProvider;
 use wvr_data::InputProvider;
+use wvr_image::image::PictureProvider;
 use wvr_midi::midi::controller::MidiProvider;
 use wvr_rendering::RGBAImageData;
 use wvr_rendering::ShaderView;
@@ -91,7 +92,7 @@ pub fn input_from_config<P: AsRef<Path>>(
     Ok(input)
 }
 
-pub struct VBoij {
+pub struct Wvr {
     pub config: ProjectConfig,
     pub uniform_sources: HashMap<String, Box<dyn InputProvider>>,
     pub shader_view: ShaderView,
@@ -103,7 +104,7 @@ pub struct VBoij {
     _screenshot_thread: thread::JoinHandle<()>,
 }
 
-impl VBoij {
+impl Wvr {
     pub fn new(config: ProjectConfig, event_loop: &EventLoop<()>) -> Result<Self> {
         let shader_view = ShaderView::new(
             &config,
@@ -217,78 +218,91 @@ impl VBoij {
     }
 }
 
+pub fn init_wvr_data_directory() -> Result<()> {
+    let data_path = wvr_data::get_data_path();
+
+    let libs_path = wvr_data::get_libs_path();
+    let lib_std_url = "https://github.com/gurkeclub/wvr-glsl-lib-std";
+    let lib_std_path = libs_path.join("std");
+
+    let filters_path = wvr_data::get_filters_path();
+
+    let projects_path = libs_path.join("projects");
+
+    println!("Creating data directory at {:?}", &data_path);
+    fs::create_dir_all(&data_path).context("Failed to create filters directory")?;
+
+    println!("Creating glsl libs directory at {:?}", &libs_path);
+    fs::create_dir_all(&libs_path).unwrap();
+
+    println!("\tDownloading glsl standard library to {:?}", lib_std_path);
+    Repository::clone(lib_std_url, lib_std_path).context("Failed to init glsl standard library")?;
+
+    println!("Creating filters directory at {:?}", &filters_path);
+    fs::create_dir_all(&filters_path).context("Failed to create filters directory")?;
+
+    println!("Creating projects_path directory at {:?}", &projects_path);
+    fs::create_dir_all(&projects_path).context("Failed to create filters directory")?;
+
+    Ok(())
+}
+
 pub fn get_config() -> Result<ProjectConfig> {
-    let wvr_data_path = wvr_data::get_data_path();
+    let data_path = wvr_data::get_data_path();
     let libs_path = wvr_data::get_libs_path();
     let filters_path = wvr_data::get_filters_path();
 
-    if !wvr_data_path.exists() {
+    if !data_path.exists() {
         println!(
-            "Warning: The default path for the data directory which contains wvr's projects does not exist, creating it at {:?}",
-            &wvr_data_path
+            "Warning: The default path for the data directory which contains wvr's data such as libraries and projects does not exist."            
         );
-        fs::create_dir_all(&wvr_data_path).unwrap();
+
+        init_wvr_data_directory()?;
     }
 
-    if !libs_path.exists() {
-        println!(
-            "Warning: The default path for the glsl libraries does not exist, creating it at {:?}",
-            libs_path.to_str()
-        );
-        fs::create_dir_all(&libs_path).unwrap();
-    }
-
-    if !filters_path.exists() {
-        println!(
-            "Warning: The default path for the filters folder does not exist, creating it at {:?}",
-            filters_path.to_str()
-        );
-        fs::create_dir_all(&filters_path).unwrap();
-    }
-
-    let matches = App::new("VBoij")
+    let matches = App::new("Wvr")
         .version("0.0.1")
         .author("Gurke.Club <contact@gurke.club>")
         .about("A VJ-focused image processing framework")
         .arg(
-            Arg::with_name("config")
-                .short("c")
+            Arg::new("config")
+                .short('c')
                 .long("config")
                 .value_name("FILE")
-                .help("Allows loading a project outside of the default project path")
+                .about("Allows loading a project outside of the default project path")
                 .required(false)
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("project_name")
-                .help("Sets the input file to use")
+            Arg::new("project_name")
+                .about("Sets the input file to use")
                 .required(false)
                 .index(1),
         )
         .arg(
-            Arg::with_name("shadertoy")
-                .short("s")
+            Arg::new("shadertoy")
+                .short('s')
                 .long("shadertoy")
                 .value_name("URL")
-                .help("Allows import of a shadertoy based project")
+                .about("Allows import of a shadertoy based project")
                 .required(false)
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("shadertoy-key")
-                .short("k")
+            Arg::new("shadertoy-key")
+                .short('k')
                 .long("shadertoy-key")
                 .value_name("KEY")
-                .help("Provides the api key for shadertoy import")
+                .about("Provides the api key for shadertoy import")
                 .required(false)
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("new")
-                .short("n")
+            Arg::new("new")
+                .short('n')
                 .long("new")
                 .value_name("NAME")
-                .help("Allows creation of a default project")
+                .about("Allows creation of a default project")
                 .required(false)
                 .takes_value(true),
         )
@@ -300,14 +314,14 @@ pub fn get_config() -> Result<ProjectConfig> {
         Some(config_path)
     } else if let Some(project_name) = matches.value_of("project_name") {
         Some(
-            wvr_data_path
+            data_path
                 .join("projects")
                 .join(project_name)
                 .join("config.ron"),
         )
     } else if let Some(shadertoy_url) = matches.value_of("shadertoy") {
         wvr_shadertoy::create_project_from_shadertoy_url(
-            wvr_data_path.as_path(),
+            data_path.as_path(),
             shadertoy_url,
             matches.value_of("shadertoy-key").unwrap(),
         )

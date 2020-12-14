@@ -12,7 +12,7 @@ use glutin::event::WindowEvent;
 use wvr_com::data::{Message, SetInfo};
 use wvr_com::server::OrderServer;
 
-use wvr::{input_from_config, VBoij};
+use wvr::{input_from_config, Wvr};
 
 fn main() -> Result<()> {
     let config = wvr::get_config()?;
@@ -29,7 +29,7 @@ fn main() -> Result<()> {
 
     let event_loop = EventLoop::new();
 
-    let mut app = VBoij::new(config, &event_loop).context("Failed creating VBoij app")?;
+    let mut app = Wvr::new(config, &event_loop).context("Failed creating VBoij app")?;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
