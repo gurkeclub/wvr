@@ -121,18 +121,19 @@ impl Wvr {
         ) = sync_channel(60);
 
         let screenshot_thread = {
-            let width = config.view.width;
-            let height = config.view.height;
             let screenshot_path = config.view.screenshot_path.clone();
-            if !screenshot_path.exists() {
-                fs::create_dir_all(&screenshot_path).context(format!(
-                    "Could not create screenshot output folder {:?}",
-                    screenshot_path
-                ))?;
+
+            if config.view.screenshot {
+                if !screenshot_path.exists() {
+                    fs::create_dir_all(&screenshot_path).context(format!(
+                        "Could not create screenshot output folder {:?}",
+                        screenshot_path
+                    ))?;
+                }
             }
 
             thread::spawn(move || {
-                let mut v: Vec<u8> = vec![0; width as usize * height as usize * 3];
+                let mut v: Vec<u8> = Vec::new();
                 for (image_data, frame_count) in screenshot_receiver.iter() {
                     if image_data.data.len() * 3 != v.len() {
                         v = vec![0; image_data.data.len() * 3];
