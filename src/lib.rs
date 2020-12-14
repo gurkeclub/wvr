@@ -335,7 +335,7 @@ pub fn get_config() -> Result<ProjectConfig> {
     let mut config: ProjectConfig = if let Ok(file) = File::open(&config_path) {
         ron::de::from_reader::<File, ProjectConfig>(file).unwrap()
     } else {
-        panic!("Could not find config file {:?}", project_path);
+        panic!("Could not find config file {:?}", config_path);
     };
 
     config.path = project_path;

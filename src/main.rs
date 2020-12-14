@@ -29,7 +29,7 @@ fn main() -> Result<()> {
 
     let event_loop = EventLoop::new();
 
-    let mut app = Wvr::new(config, &event_loop).context("Failed creating VBoij app")?;
+    let mut app = Wvr::new(config, &event_loop).context("Failed creating Wvr app")?;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
