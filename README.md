@@ -50,7 +50,7 @@ See https://gstreamer.freedesktop.org/documentation/installing/
 
 ### 2. Installing wvr
 ```
-cargo install "https://github.com/gurkeclub/wvr.git" --branch main
+cargo install --git "https://github.com/gurkeclub/wvr.git" --branch main
 ```
 
 ## Using prebuilt binaires
@@ -61,7 +61,6 @@ See https://gstreamer.freedesktop.org/documentation/installing/
 ### 2. Download the wvr binary
 Download the [latest release](https://github.com/gurkeclub/wvr/releases/) and place it in a folder available through your PATH environment variable
 
-
 ## Wvr related libraries
  - [wvr-data](https://github.com/gurkeclub/wvr-data)
  - [wvr-rendering](https://github.com/gurkeclub/wvr-rendering)
@@ -71,3 +70,97 @@ Download the [latest release](https://github.com/gurkeclub/wvr/releases/) and pl
  - [wvr-midi](https://github.com/gurkeclub/wvr-midi)
  - [wvr-shadertoy](https://github.com/gurkeclub/wvr-shadertoy)
  - [wvr-com](https://github.com/gurkeclub/wvr-com)
+
+
+## Animation configuration
+### Example of a configuration for an animation
+The following code is a copy of the [simple example](https://github.com/gurkeclub/wvr-examples/blob/main/simple/config.ron) animation for wvr:
+
+
+```json
+(
+    view: (
+        bpm: 89,
+        width: 640,
+        height: 480,
+        target_fps: 60,
+        dynamic: true,
+        fullscreen: false,
+        vsync: false,
+        screenshot: false,
+        screenshot_path: "output/",
+        locked_speed: false,
+    ),
+    server: (
+        ip: "127.0.0.1",
+        port: 3000,
+        enable: false,
+    ),
+    inputs: {
+        "forest": (
+            type: "Picture",
+            path: "res/forest.jpg",
+            width: 640,
+            height: 480,
+        ),
+        "butterfly": (
+            type: "Video",
+            path: "res/butterfly.mp4",
+            width: 640,
+            height: 480,
+            speed: (Fps: 30.0),
+        ),
+    },
+    filters: {
+        "target": (
+            inputs: [
+                "iChannel0",
+            ],
+            vertex_shader: [
+                "#std/default.vs.glsl",
+            ],
+            fragment_shader: [
+                "#std/header.glsl",
+                "render_chain/target.fs.glsl",
+            ],
+            variables: {},
+        ),
+        "collage": (
+            inputs: [
+                "iChannel0",
+                "iChannel1",
+            ],
+            vertex_shader: [
+                "#std/default.vs.glsl",
+            ],
+            fragment_shader: [
+                "#std/header.glsl",
+                "render_chain/collage.fs.glsl",
+            ],
+            variables: {},
+        ),
+    },
+    render_chain: [
+        (
+            name: "collage",
+            filter: "collage",
+            inputs: {
+                "iChannel0": Linear("forest"),
+                "iChannel1": Linear("butterfly"),
+            },
+            variables: {},
+            precision: U8,
+        ),
+    ],
+    final_stage: (
+        name: "target",
+        filter: "target",
+        inputs: {
+            "iChannel0": Linear("collage"),
+        },
+        variables: {},
+        precision: U8,
+    ),
+)
+
+```
