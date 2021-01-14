@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
+use std::{collections::HashMap, path::MAIN_SEPARATOR};
 
 use anyhow::{Context, Result};
 use clap::{App, Arg};
@@ -26,9 +26,11 @@ pub fn get_path_for_resource<P: AsRef<Path>>(path: P, resource_path: &str) -> St
         return resource_path.to_owned();
     }
 
-    if let Ok(abs_resource_path) = fs::canonicalize(&PathBuf::from(resource_path)) {
+    let resource_path = resource_path.replace('/', MAIN_SEPARATOR.to_string().as_str());
+
+    if let Ok(abs_resource_path) = fs::canonicalize(&PathBuf::from(&resource_path)) {
         if abs_resource_path.to_str().unwrap() == resource_path {
-            return resource_path.to_owned();
+            return resource_path.clone();
         }
     }
 
