@@ -232,20 +232,30 @@ pub fn init_wvr_data_directory() -> Result<()> {
 
     let projects_path = libs_path.join("projects");
 
-    println!("Creating data directory at {:?}", &data_path);
-    fs::create_dir_all(&data_path).context("Failed to create filters directory")?;
+    if !data_path.exists() {
+        println!("Creating data directory at {:?}", &data_path);
+        fs::create_dir_all(&data_path).context("Failed to create filters directory")?;
+    }
 
-    println!("Creating glsl libs directory at {:?}", &libs_path);
-    fs::create_dir_all(&libs_path).unwrap();
+    if !libs_path.exists() {
+        println!("Creating glsl libs directory at {:?}", &libs_path);
+        fs::create_dir_all(&libs_path).unwrap();
+    }
 
-    println!("\tDownloading glsl standard library to {:?}", lib_std_path);
-    Repository::clone(lib_std_url, lib_std_path).context("Failed to init glsl standard library")?;
+    if !lib_std_path.exists() {
+        println!("\tDownloading glsl standard library to {:?}", lib_std_path);
+        Repository::clone(lib_std_url, lib_std_path).context("Failed to init glsl standard library")?;
+    }
 
-    println!("Creating filters directory at {:?}", &filters_path);
-    fs::create_dir_all(&filters_path).context("Failed to create filters directory")?;
+    if !filters_path.exists() {
+        println!("Creating filters directory at {:?}", &filters_path);
+        fs::create_dir_all(&filters_path).context("Failed to create filters directory")?;
+    }
 
-    println!("Creating projects_path directory at {:?}", &projects_path);
-    fs::create_dir_all(&projects_path).context("Failed to create filters directory")?;
+    if !projects_path.exists() {
+        println!("Creating projects_path directory at {:?}", &projects_path);
+        fs::create_dir_all(&projects_path).context("Failed to create filters directory")?;
+    }
 
     Ok(())
 }
@@ -255,13 +265,8 @@ pub fn get_config() -> Result<ProjectConfig> {
     let libs_path = wvr_data::get_libs_path();
     let filters_path = wvr_data::get_filters_path();
 
-    if !data_path.exists() {
-        println!(
-            "Warning: The default path for the data directory which contains wvr's data such as libraries and projects does not exist."            
-        );
 
-        init_wvr_data_directory()?;
-    }
+    init_wvr_data_directory()?;
 
     let matches = App::new("Wvr")
         .version("0.0.1")
