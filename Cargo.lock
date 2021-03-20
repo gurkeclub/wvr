@@ -3128,7 +3128,7 @@ dependencies = [
 [[package]]
 name = "wvr-rendering"
 version = "0.1.2"
-source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#2406a4a6402b43a00883595740b5a6e8c1a357de"
+source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#a0c656cbd8d87d4da83d1150c7be9bdc7fe041a6"
 dependencies = [
  "anyhow",
  "glium",
