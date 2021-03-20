@@ -114,7 +114,7 @@ impl Wvr {
             &config.render_chain,
             &config.final_stage,
             &config.filters,
-            &event_loop,
+            event_loop,
         )?;
 
         let (screenshot_sender, screenshot_receiver): (
@@ -244,7 +244,8 @@ pub fn init_wvr_data_directory() -> Result<()> {
 
     if !lib_std_path.exists() {
         println!("\tDownloading glsl standard library to {:?}", lib_std_path);
-        Repository::clone(lib_std_url, lib_std_path).context("Failed to init glsl standard library")?;
+        Repository::clone(lib_std_url, lib_std_path)
+            .context("Failed to init glsl standard library")?;
     }
 
     if !filters_path.exists() {
@@ -264,7 +265,6 @@ pub fn get_config() -> Result<ProjectConfig> {
     let data_path = wvr_data::get_data_path();
     let libs_path = wvr_data::get_libs_path();
     let filters_path = wvr_data::get_filters_path();
-
 
     init_wvr_data_directory()?;
 
