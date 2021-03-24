@@ -101,14 +101,15 @@ pub fn load_filter_config_list_from_folder(
 
     for folder_entry in filter_folder_path.read_dir()? {
         let filter_config_path = folder_entry?.path();
-        if !filter_config_path.to_str().unwrap().ends_with("ron") {
+        if !filter_config_path.to_str().unwrap().ends_with("json") {
             continue;
         }
 
         let filter_name = filter_config_path.file_name().unwrap().to_str().unwrap();
-        let filter_name = filter_name[..filter_name.len() - 4].into();
+        let filter_name = filter_name[..filter_name.len() - 5].into();
         let filter_config: FilterConfig =
-            ron::de::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?).unwrap();
+            serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
+                .unwrap();
 
         filter_list.insert(filter_name, filter_config);
     }
@@ -374,7 +375,7 @@ pub fn get_config() -> Result<(PathBuf, ProjectConfig)> {
             data_path
                 .join("projects")
                 .join(project_name)
-                .join("config.ron"),
+                .join("config.json"),
         )
     } else if let Some(shadertoy_url) = matches.value_of("shadertoy") {
         wvr_shadertoy::create_project_from_shadertoy_url(
@@ -390,7 +391,7 @@ pub fn get_config() -> Result<(PathBuf, ProjectConfig)> {
 
     let project_path = config_path.parent().unwrap().to_owned();
     let config: ProjectConfig = if let Ok(file) = File::open(&config_path) {
-        ron::de::from_reader::<File, ProjectConfig>(file).unwrap()
+        serde_json::from_reader::<File, ProjectConfig>(file).unwrap()
     } else {
         panic!("Could not find config file {:?}", config_path);
     };
