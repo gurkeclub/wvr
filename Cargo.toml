@@ -1,6 +1,6 @@
 [package]
 name = "wvr"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["gurke.club <contact@gurke.club>"]
 edition = "2018"
 

@@ -94,46 +94,57 @@ pub fn input_from_config<P: AsRef<Path>>(
     Ok(input)
 }
 
-pub fn load_filter_config_list_from_folder(
-    filter_folder_path: &Path,
-) -> Result<HashMap<String, FilterConfig>> {
-    let mut filter_list = HashMap::new();
-
-    for folder_entry in filter_folder_path.read_dir()? {
-        let filter_config_path = folder_entry?.path();
-        if !filter_config_path.to_str().unwrap().ends_with("json") {
-            continue;
-        }
-
-        let filter_name = filter_config_path.file_name().unwrap().to_str().unwrap();
-        let filter_name = filter_name[..filter_name.len() - 5].into();
-        let filter_config: FilterConfig =
-            serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
-                .unwrap();
-
-        filter_list.insert(filter_name, filter_config);
-    }
-
-    Ok(filter_list)
-}
-
-pub fn load_available_filter_list(project_path: &Path) -> Result<HashMap<String, FilterConfig>> {
+pub fn load_available_filter_list(
+    project_path: &Path,
+) -> Result<HashMap<String, (PathBuf, FilterConfig)>> {
     let mut available_filter_list = HashMap::new();
 
     let project_filter_folder_path = project_path.join("filters");
     let wvr_filter_folder_path = wvr_data::get_filters_path();
 
     // Load filters from project
-    available_filter_list.extend(load_filter_config_list_from_folder(
-        &project_filter_folder_path,
-    )?);
+    for folder_entry in project_filter_folder_path.read_dir()? {
+        let filter_path = folder_entry?.path();
+        let filter_config_path = filter_path.join("config.json");
+        if !filter_config_path.exists() {
+            continue;
+        }
+
+        let filter_name = filter_path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        let filter_config: FilterConfig =
+            serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
+                .unwrap();
+
+        available_filter_list.insert(filter_name, (filter_path, filter_config));
+    }
 
     // Load filters provided by wvr
-    for (filter_name, filter_config) in
-        load_filter_config_list_from_folder(&wvr_filter_folder_path)?
-    {
+    for folder_entry in wvr_filter_folder_path.read_dir()? {
+        let filter_path = folder_entry?.path();
+        let filter_config_path = filter_path.join("config.json");
+        if !filter_config_path.exists() {
+            continue;
+        }
+
+        let filter_name = filter_path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        let filter_config: FilterConfig =
+            serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
+                .unwrap();
+
         if !available_filter_list.contains_key(&filter_name) {
-            available_filter_list.insert(filter_name, filter_config);
+            available_filter_list.insert(filter_name, (filter_path, filter_config));
         }
     }
 
@@ -161,7 +172,6 @@ impl Wvr {
         let available_filter_list = load_available_filter_list(project_path)?;
 
         let shader_view = ShaderView::new(
-            project_path,
             config.bpm as f64,
             &config.view,
             &config.render_chain,

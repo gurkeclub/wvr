@@ -3046,7 +3046,7 @@ dependencies = [
 
 [[package]]
 name = "wvr"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "clap 3.0.0-beta.2",
@@ -3125,8 +3125,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-rendering"
-version = "0.1.4"
-source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#37955d5eff46665b2d784088cd2531638709f657"
+version = "0.1.5"
+source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#00fc50ea151485a7ca3473e4bd5d39c4de68754a"
 dependencies = [
  "anyhow",
  "glium",
