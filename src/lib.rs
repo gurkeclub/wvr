@@ -107,9 +107,13 @@ pub struct Wvr {
 }
 
 impl Wvr {
-    pub fn new(config: ProjectConfig, event_loop: &EventLoop<()>) -> Result<Self> {
+    pub fn new(
+        project_path: &Path,
+        config: ProjectConfig,
+        event_loop: &EventLoop<()>,
+    ) -> Result<Self> {
         let shader_view = ShaderView::new(
-            &config,
+            project_path,
             &config.view,
             &config.render_chain,
             &config.final_stage,
@@ -163,7 +167,7 @@ impl Wvr {
         let mut uniform_sources = HashMap::new();
 
         for (input_name, input_config) in &config.inputs {
-            let input_provider = input_from_config(&config.path, &input_config, &input_name)?;
+            let input_provider = input_from_config(project_path, &input_config, &input_name)?;
 
             uniform_sources.insert(input_name.clone(), input_provider);
         }
@@ -191,8 +195,7 @@ impl Wvr {
     }
 
     pub fn update(&mut self) -> Result<()> {
-        self.shader_view
-            .update(&self.config, &mut self.uniform_sources)?;
+        self.shader_view.update(&mut self.uniform_sources)?;
 
         Ok(())
     }
@@ -261,10 +264,8 @@ pub fn init_wvr_data_directory() -> Result<()> {
     Ok(())
 }
 
-pub fn get_config() -> Result<ProjectConfig> {
+pub fn get_config() -> Result<(PathBuf, ProjectConfig)> {
     let data_path = wvr_data::get_data_path();
-    let libs_path = wvr_data::get_libs_path();
-    let filters_path = wvr_data::get_filters_path();
 
     init_wvr_data_directory()?;
 
@@ -340,20 +341,11 @@ pub fn get_config() -> Result<ProjectConfig> {
     let config_path = config_path.unwrap();
 
     let project_path = config_path.parent().unwrap().to_owned();
-    let mut config: ProjectConfig = if let Ok(file) = File::open(&config_path) {
+    let config: ProjectConfig = if let Ok(file) = File::open(&config_path) {
         ron::de::from_reader::<File, ProjectConfig>(file).unwrap()
     } else {
         panic!("Could not find config file {:?}", config_path);
     };
 
-    config.path = project_path;
-
-    if config.filters_path.to_string_lossy().len() == 0 {
-        config.filters_path = filters_path;
-    }
-    if config.libs_path.to_string_lossy().len() == 0 {
-        config.libs_path = libs_path;
-    }
-
-    Ok(config)
+    Ok((project_path, config))
 }

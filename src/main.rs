@@ -15,7 +15,7 @@ use wvr_com::server::OrderServer;
 use wvr::{input_from_config, Wvr};
 
 fn main() -> Result<()> {
-    let config = wvr::get_config()?;
+    let (project_path, config) = wvr::get_config()?;
 
     let (order_sender, order_receiver) = channel();
     if config.server.enable {
@@ -29,7 +29,8 @@ fn main() -> Result<()> {
 
     let event_loop = EventLoop::new();
 
-    let mut app = Wvr::new(config, &event_loop).context("Failed creating Wvr app")?;
+    let mut app =
+        Wvr::new(&project_path, config, &event_loop).context("Failed creating Wvr app")?;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -74,7 +75,7 @@ fn main() -> Result<()> {
         for message in order_receiver.try_iter() {
             match message {
                 Message::Insert((input_name, input_config)) => {
-                    match input_from_config(&app.config.path, &input_config, &input_name) {
+                    match input_from_config(&project_path, &input_config, &input_name) {
                         Ok(input_provider) => {
                             app.uniform_sources.insert(input_name, input_provider);
                         }
