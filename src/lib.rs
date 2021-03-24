@@ -13,7 +13,7 @@ use git2::Repository;
 use glium::glutin::event_loop::EventLoop;
 
 use wvr_cam::cam::CamProvider;
-use wvr_data::config::project_config::{InputConfig, ProjectConfig};
+use wvr_data::config::project_config::{FilterConfig, InputConfig, ProjectConfig};
 use wvr_data::InputProvider;
 use wvr_image::image::PictureProvider;
 use wvr_midi::midi::controller::MidiProvider;
@@ -94,6 +94,51 @@ pub fn input_from_config<P: AsRef<Path>>(
     Ok(input)
 }
 
+pub fn load_filter_config_list_from_folder(
+    filter_folder_path: &Path,
+) -> Result<HashMap<String, FilterConfig>> {
+    let mut filter_list = HashMap::new();
+
+    for folder_entry in filter_folder_path.read_dir()? {
+        let filter_config_path = folder_entry?.path();
+        if !filter_config_path.to_str().unwrap().ends_with("ron") {
+            continue;
+        }
+
+        let filter_name = filter_config_path.file_name().unwrap().to_str().unwrap();
+        let filter_name = filter_name[..filter_name.len() - 4].into();
+        let filter_config: FilterConfig =
+            ron::de::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?).unwrap();
+
+        filter_list.insert(filter_name, filter_config);
+    }
+
+    Ok(filter_list)
+}
+
+pub fn load_available_filter_list(project_path: &Path) -> Result<HashMap<String, FilterConfig>> {
+    let mut available_filter_list = HashMap::new();
+
+    let project_filter_folder_path = project_path.join("filters");
+    let wvr_filter_folder_path = wvr_data::get_filters_path();
+
+    // Load filters from project
+    available_filter_list.extend(load_filter_config_list_from_folder(
+        &project_filter_folder_path,
+    )?);
+
+    // Load filters provided by wvr
+    for (filter_name, filter_config) in
+        load_filter_config_list_from_folder(&wvr_filter_folder_path)?
+    {
+        if !available_filter_list.contains_key(&filter_name) {
+            available_filter_list.insert(filter_name, filter_config);
+        }
+    }
+
+    Ok(available_filter_list)
+}
+
 pub struct Wvr {
     pub config: ProjectConfig,
     pub uniform_sources: HashMap<String, Box<dyn InputProvider>>,
@@ -112,12 +157,15 @@ impl Wvr {
         config: ProjectConfig,
         event_loop: &EventLoop<()>,
     ) -> Result<Self> {
+        let available_filter_list = load_available_filter_list(project_path)?;
+
         let shader_view = ShaderView::new(
             project_path,
+            config.bpm as f64,
             &config.view,
             &config.render_chain,
             &config.final_stage,
-            &config.filters,
+            &available_filter_list,
             event_loop,
         )?;
 
@@ -231,13 +279,13 @@ pub fn init_wvr_data_directory() -> Result<()> {
     let lib_std_url = "https://github.com/gurkeclub/wvr-glsl-lib-std";
     let lib_std_path = libs_path.join("std");
 
-    let filters_path = wvr_data::get_filters_path();
+    let filter_folder_path = wvr_data::get_filters_path();
 
     let projects_path = libs_path.join("projects");
 
     if !data_path.exists() {
         println!("Creating data directory at {:?}", &data_path);
-        fs::create_dir_all(&data_path).context("Failed to create filters directory")?;
+        fs::create_dir_all(&data_path).context("Failed to create data directory")?;
     }
 
     if !libs_path.exists() {
@@ -251,9 +299,9 @@ pub fn init_wvr_data_directory() -> Result<()> {
             .context("Failed to init glsl standard library")?;
     }
 
-    if !filters_path.exists() {
-        println!("Creating filters directory at {:?}", &filters_path);
-        fs::create_dir_all(&filters_path).context("Failed to create filters directory")?;
+    if !filter_folder_path.exists() {
+        println!("Creating filters directory at {:?}", &filter_folder_path);
+        fs::create_dir_all(&filter_folder_path).context("Failed to create filters directory")?;
     }
 
     if !projects_path.exists() {
