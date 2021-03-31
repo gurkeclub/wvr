@@ -37,6 +37,8 @@ fn main() -> Result<()> {
             Event::WindowEvent { event, .. } => {
                 if let WindowEvent::CloseRequested = event {
                     *control_flow = ControlFlow::Exit;
+
+                    app.stop();
                     return;
                 } else if let WindowEvent::Focused(focused) = event {
                     app.set_focused(focused);

@@ -281,6 +281,12 @@ impl Wvr {
     pub fn request_redraw(&mut self) {
         self.shader_view.request_redraw();
     }
+
+    pub fn stop(&mut self) {
+        for (_input_name, source) in self.uniform_sources.iter_mut() {
+            source.stop();
+        }
+    }
 }
 
 pub fn init_wvr_data_directory() -> Result<()> {
