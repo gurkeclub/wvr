@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
-use std::{collections::HashMap, path::MAIN_SEPARATOR};
+use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use clap::{App, Arg};
@@ -26,7 +26,7 @@ pub fn get_path_for_resource<P: AsRef<Path>>(path: P, resource_path: &str) -> St
         return resource_path.to_owned();
     }
 
-    let resource_path = resource_path.replace('/', MAIN_SEPARATOR.to_string().as_str());
+    let resource_path = resource_path.replace('\\', "/");
 
     if let Ok(abs_resource_path) = fs::canonicalize(&PathBuf::from(&resource_path)) {
         if abs_resource_path.to_str().unwrap() == resource_path {
@@ -34,8 +34,18 @@ pub fn get_path_for_resource<P: AsRef<Path>>(path: P, resource_path: &str) -> St
         }
     }
 
-    path.as_ref()
-        .join(resource_path)
+    let resource_path = path.as_ref().join(resource_path);
+	
+	let resource_path = PathBuf::from(&(&resource_path).to_str().unwrap().to_string().replace('\\', "/"));
+		
+		
+	println!("{:}", resource_path.as_path()
+        .to_str()
+        .unwrap()
+        .to_string());
+		
+	resource_path.canonicalize()
+		.unwrap()
         .as_path()
         .to_str()
         .unwrap()
@@ -68,6 +78,8 @@ pub fn input_from_config<P: AsRef<Path>>(
             height,
         } => {
             let path = get_path_for_resource(&project_path, &path);
+			
+			println!("{:?}", path); 
             Box::new(PictureProvider::new(
                 &path,
                 input_name.to_owned(),
