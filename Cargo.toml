@@ -1,6 +1,6 @@
 [package]
 name = "wvr"
-version = "0.1.10"
+version = "0.1.11"
 authors = ["gurke.club <contact@gurke.club>"]
 edition = "2018"
 
@@ -12,6 +12,10 @@ git2 = "0.13"
 
 glium = "0.29"
 image = "0.23"
+
+
+
+
 
 wvr-data = {git = "https://github.com/gurkeclub/wvr-data.git", branch="main"}
 wvr-com = {git = "https://github.com/gurkeclub/wvr-com.git", branch="main"}
