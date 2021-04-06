@@ -2217,17 +2217,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ron"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "064ea8613fb712a19faf920022ec8ddf134984f100090764a4e1d768f3827f1f"
-dependencies = [
- "base64",
- "bitflags 1.2.1",
- "serde",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3007,7 +2996,7 @@ dependencies = [
 
 [[package]]
 name = "wvr"
-version = "0.1.10"
+version = "0.1.12"
 dependencies = [
  "anyhow",
  "clap",
@@ -3053,7 +3042,7 @@ dependencies = [
 [[package]]
 name = "wvr-data"
 version = "0.1.4"
-source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#fa652093dc4881256679ebed6ab5cbd1179bf22d"
+source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#58923b1a98b2b798ae9ff1ced2bfef991afd7930"
 dependencies = [
  "anyhow",
  "directories-next",
@@ -3085,21 +3074,19 @@ dependencies = [
 [[package]]
 name = "wvr-rendering"
 version = "0.1.9"
-source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#62f5ee8c3d0671e2298f57eb84d218ae6b0897f0"
+source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#2611cc3f9dd409f0c579685d883c14436c7fce6b"
 dependencies = [
  "anyhow",
  "glium",
- "ron",
  "wvr-data",
 ]
 
 [[package]]
 name = "wvr-shadertoy"
 version = "0.1.2"
-source = "git+https://github.com/gurkeclub/wvr-shadertoy.git?branch=main#99415c5be162eee860ca7d82ad1c6dfcc68f9cc3"
+source = "git+https://github.com/gurkeclub/wvr-shadertoy.git?branch=main#782ed6da44ba94f49ebc25afcd1873fbe4ec2698"
 dependencies = [
  "reqwest",
- "ron",
  "serde",
  "serde_derive",
  "serde_json",

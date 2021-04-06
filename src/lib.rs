@@ -1,10 +1,10 @@
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
-use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use clap::{App, Arg};
@@ -30,22 +30,25 @@ pub fn get_path_for_resource<P: AsRef<Path>>(path: P, resource_path: &str) -> St
 
     if let Ok(abs_resource_path) = fs::canonicalize(&PathBuf::from(&resource_path)) {
         if abs_resource_path.to_str().unwrap() == resource_path {
-            return resource_path.clone();
+            return resource_path;
         }
     }
 
     let resource_path = path.as_ref().join(resource_path);
-	
-	let resource_path = PathBuf::from(&(&resource_path).to_str().unwrap().to_string().replace('\\', "/"));
-		
-		
-	println!("{:}", resource_path.as_path()
-        .to_str()
+
+    let resource_path = PathBuf::from(
+        &(&resource_path)
+            .to_str()
+            .unwrap()
+            .to_string()
+            .replace('\\', "/"),
+    );
+
+    println!("{:}", resource_path.as_path().to_str().unwrap().to_string());
+
+    resource_path
+        .canonicalize()
         .unwrap()
-        .to_string());
-		
-	resource_path.canonicalize()
-		.unwrap()
         .as_path()
         .to_str()
         .unwrap()
@@ -69,7 +72,7 @@ pub fn input_from_config<P: AsRef<Path>>(
                 &path,
                 input_name.to_owned(),
                 (*width, *height),
-                speed.clone(),
+                *speed,
             )?)
         }
         InputConfig::Picture {
@@ -78,8 +81,8 @@ pub fn input_from_config<P: AsRef<Path>>(
             height,
         } => {
             let path = get_path_for_resource(&project_path, &path);
-			
-			println!("{:?}", path); 
+
+            println!("{:?}", path);
             Box::new(PictureProvider::new(
                 &path,
                 input_name.to_owned(),
@@ -155,9 +158,9 @@ pub fn load_available_filter_list(
             serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
                 .unwrap();
 
-        if !available_filter_list.contains_key(&filter_name) {
-            available_filter_list.insert(filter_name, (filter_path, filter_config));
-        }
+        available_filter_list
+            .entry(filter_name)
+            .or_insert((filter_path, filter_config));
     }
 
     Ok(available_filter_list)
@@ -200,13 +203,11 @@ impl Wvr {
         let screenshot_thread = {
             let screenshot_path = config.view.screenshot_path.clone();
 
-            if config.view.screenshot {
-                if !screenshot_path.exists() {
-                    fs::create_dir_all(&screenshot_path).context(format!(
-                        "Could not create screenshot output folder {:?}",
-                        screenshot_path
-                    ))?;
-                }
+            if config.view.screenshot && !screenshot_path.exists() {
+                fs::create_dir_all(&screenshot_path).context(format!(
+                    "Could not create screenshot output folder {:?}",
+                    screenshot_path
+                ))?;
             }
 
             thread::spawn(move || {
