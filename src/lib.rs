@@ -44,8 +44,6 @@ pub fn get_path_for_resource<P: AsRef<Path>>(path: P, resource_path: &str) -> St
             .replace('\\', "/"),
     );
 
-    println!("{:}", resource_path.as_path().to_str().unwrap().to_string());
-
     if let Ok(resource_path) = resource_path.canonicalize() {
         resource_path
     } else {
