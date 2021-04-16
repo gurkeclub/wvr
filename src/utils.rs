@@ -283,3 +283,18 @@ pub fn load_available_filter_list(
 
     Ok(available_filter_list)
 }
+
+pub fn load_inputs(
+    project_path: &Path,
+    input_list: &HashMap<String, InputConfig>,
+) -> Result<HashMap<String, Box<dyn InputProvider>>> {
+    let mut uniform_sources = HashMap::new();
+
+    for (input_name, input_config) in input_list {
+        let input_provider = input_from_config(project_path, &input_config, &input_name)?;
+
+        uniform_sources.insert(input_name.clone(), input_provider);
+    }
+
+    Ok(uniform_sources)
+}

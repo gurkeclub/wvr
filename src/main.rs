@@ -27,10 +27,12 @@ fn main() -> Result<()> {
     }
     let event_loop = EventLoop::new();
 
-    let app = Wvr::new(&project_path, config, &event_loop, order_receiver)
+    let window = wvr_rendering::utils::build_window(&config.view, &event_loop)?;
+
+    let app = Wvr::new(&project_path, config, &window, order_receiver)
         .context("Failed creating Wvr app")?;
 
-    start_wvr(app, event_loop);
+    start_wvr(window, app, event_loop);
 
     Ok(())
 }

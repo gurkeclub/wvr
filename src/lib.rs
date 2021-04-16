@@ -6,10 +6,13 @@ use std::thread;
 
 use anyhow::{Context, Result};
 
+use glium::backend::Facade;
 use glium::glutin;
 use glium::glutin::event::Event;
 use glium::glutin::event_loop::ControlFlow;
 use glium::glutin::event_loop::EventLoop;
+use glium::Display;
+use glium::Frame;
 use glutin::event::WindowEvent;
 
 use wvr_com::data::{Message, SetInfo};
@@ -41,7 +44,7 @@ impl Wvr {
     pub fn new(
         project_path: &Path,
         config: ProjectConfig,
-        event_loop: &EventLoop<()>,
+        display: &dyn Facade,
         order_receiver: Receiver<Message>,
     ) -> Result<Self> {
         let available_filter_list = utils::load_available_filter_list(project_path)?;
@@ -52,7 +55,7 @@ impl Wvr {
             &config.render_chain,
             &config.final_stage,
             &available_filter_list,
-            event_loop,
+            display,
         )?;
 
         let (screenshot_sender, screenshot_receiver): (
@@ -96,14 +99,8 @@ impl Wvr {
                 }
             })
         };
-        let mut uniform_sources = HashMap::new();
 
-        for (input_name, input_config) in &config.inputs {
-            let input_provider =
-                utils::input_from_config(project_path, &input_config, &input_name)?;
-
-            uniform_sources.insert(input_name.clone(), input_provider);
-        }
+        let uniform_sources = utils::load_inputs(project_path, &config.inputs)?;
 
         Ok(Self {
             project_path: project_path.to_owned(),
@@ -132,18 +129,20 @@ impl Wvr {
         self.shader_view.set_mouse_position(self.mouse_position);
     }
 
-    pub fn update(&mut self) -> Result<()> {
-        self.shader_view.update(&mut self.uniform_sources)?;
+    pub fn update(&mut self, display: &dyn Facade, resolution: (usize, usize)) -> Result<()> {
+        self.shader_view.set_resolution(display, resolution)?;
+        self.shader_view
+            .update(display, &mut self.uniform_sources)?;
 
         Ok(())
     }
 
-    pub fn render(&mut self) -> Result<()> {
-        self.shader_view.render()?;
+    pub fn render(&mut self, display: &dyn Facade, window_frame: &mut Frame) -> Result<()> {
+        self.shader_view.render(display, window_frame)?;
 
         if self.config.view.screenshot {
             if let Err(e) = self.screenshot_sender.send((
-                self.shader_view.take_screenshot()?,
+                self.shader_view.take_screenshot(display)?,
                 self.shader_view.get_frame_count(),
             )) {
                 eprintln!(
@@ -157,10 +156,6 @@ impl Wvr {
         Ok(())
     }
 
-    pub fn request_redraw(&mut self) {
-        self.shader_view.request_redraw();
-    }
-
     pub fn stop(&mut self) {
         for (_input_name, source) in self.uniform_sources.iter_mut() {
             source.stop();
@@ -168,7 +163,7 @@ impl Wvr {
     }
 }
 
-pub fn start_wvr(mut wvr: Wvr, event_loop: EventLoop<()>) {
+pub fn start_wvr(display: Display, mut wvr: Wvr, event_loop: EventLoop<()>) {
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent { event, .. } => {
@@ -186,23 +181,35 @@ pub fn start_wvr(mut wvr: Wvr, event_loop: EventLoop<()>) {
                 }
             }
             Event::RedrawRequested(_) => {
-                if let Err(error) = wvr.update() {
+                let new_resolution = display.get_framebuffer_dimensions();
+                let new_resolution = (new_resolution.0 as usize, new_resolution.1 as usize);
+
+                if let Err(error) = wvr.update(&display, new_resolution) {
                     eprintln!("Failed to update app: {:?}", error);
 
                     *control_flow = ControlFlow::Exit;
                     return;
                 }
 
-                if let Err(error) = wvr.render() {
+                let mut window_frame = display.draw();
+                if let Err(error) = wvr.render(&display, &mut window_frame) {
                     eprintln!("Failed to update app: {:?}", error);
 
                     *control_flow = ControlFlow::Exit;
+                }
+
+                window_frame
+                    .finish()
+                    .context("Failed to finalize rendering")
+                    .unwrap();
+
+                if control_flow == &ControlFlow::Exit {
                     return;
                 }
             }
             Event::MainEventsCleared => {}
             Event::RedrawEventsCleared => {
-                wvr.request_redraw();
+                display.gl_window().window().request_redraw();
             }
             Event::NewEvents(glutin::event::StartCause::Poll) => {
                 return;
