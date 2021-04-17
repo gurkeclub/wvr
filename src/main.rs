@@ -29,10 +29,9 @@ fn main() -> Result<()> {
 
     let window = wvr_rendering::utils::build_window(&config.view, &event_loop)?;
 
-    let app = Wvr::new(&project_path, config, &window, order_receiver)
-        .context("Failed creating Wvr app")?;
+    let app = Wvr::new(&project_path, config, &window).context("Failed creating Wvr app")?;
 
-    start_wvr(window, app, event_loop);
+    start_wvr(window, app, event_loop, order_receiver);
 
     Ok(())
 }

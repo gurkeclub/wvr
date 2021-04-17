@@ -27,8 +27,6 @@ pub struct Wvr {
     pub project_path: PathBuf,
     pub config: ProjectConfig,
 
-    pub order_receiver: Receiver<Message>,
-
     pub uniform_sources: HashMap<String, Box<dyn InputProvider>>,
 
     pub shader_view: ShaderView,
@@ -41,12 +39,7 @@ pub struct Wvr {
 }
 
 impl Wvr {
-    pub fn new(
-        project_path: &Path,
-        config: ProjectConfig,
-        display: &dyn Facade,
-        order_receiver: Receiver<Message>,
-    ) -> Result<Self> {
+    pub fn new(project_path: &Path, config: ProjectConfig, display: &dyn Facade) -> Result<Self> {
         let available_filter_list = utils::load_available_filter_list(project_path)?;
 
         let shader_view = ShaderView::new(
@@ -106,8 +99,6 @@ impl Wvr {
             project_path: project_path.to_owned(),
             config,
 
-            order_receiver,
-
             uniform_sources,
 
             shader_view,
@@ -163,7 +154,12 @@ impl Wvr {
     }
 }
 
-pub fn start_wvr(display: Display, mut wvr: Wvr, event_loop: EventLoop<()>) {
+pub fn start_wvr(
+    display: Display,
+    mut wvr: Wvr,
+    event_loop: EventLoop<()>,
+    order_receiver: Receiver<Message>,
+) {
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent { event, .. } => {
@@ -218,7 +214,7 @@ pub fn start_wvr(display: Display, mut wvr: Wvr, event_loop: EventLoop<()>) {
             e => println!("{:?}", e),
         }
 
-        for message in wvr.order_receiver.try_iter() {
+        for message in order_receiver.try_iter() {
             match message {
                 Message::Insert((input_name, input_config)) => {
                     match utils::input_from_config(&wvr.project_path, &input_config, &input_name) {
