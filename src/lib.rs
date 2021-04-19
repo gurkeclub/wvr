@@ -15,9 +15,10 @@ use glium::Display;
 use glium::Frame;
 use glutin::event::WindowEvent;
 
-use wvr_com::data::{Message, SetInfo};
+use wvr_com::data::{Message, RenderStageUpdate, SetInfo};
 use wvr_data::config::project_config::ProjectConfig;
 use wvr_data::InputProvider;
+use wvr_rendering::stage::Stage;
 use wvr_rendering::RGBAImageData;
 use wvr_rendering::ShaderView;
 
@@ -128,8 +129,18 @@ impl Wvr {
         Ok(())
     }
 
-    pub fn render(&mut self, display: &dyn Facade, window_frame: &mut Frame) -> Result<()> {
-        self.shader_view.render(display, window_frame)?;
+    pub fn render_stages(&mut self, display: &dyn Facade) -> Result<()> {
+        self.shader_view.render_stages(display)?;
+
+        Ok(())
+    }
+
+    pub fn render_final_stage(
+        &mut self,
+        display: &dyn Facade,
+        window_frame: &mut Frame,
+    ) -> Result<()> {
+        self.shader_view.render_final_stage(display, window_frame)?;
 
         if self.config.view.screenshot {
             if let Err(e) = self.screenshot_sender.send((
@@ -141,6 +152,122 @@ impl Wvr {
                     e
                 );
                 self.config.view.screenshot = false;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn handle_message(&mut self, display: &dyn Facade, message: &Message) -> Result<()> {
+        match message {
+            Message::Insert((input_name, input_config)) => {
+                match utils::input_from_config(&self.project_path, &input_config, &input_name) {
+                    Ok(input_provider) => {
+                        self.uniform_sources
+                            .insert(input_name.clone(), input_provider);
+                    }
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            }
+            Message::Set(set_info) => match set_info {
+                SetInfo::Bpm(bpm) => {
+                    self.shader_view.set_bpm(*bpm);
+                }
+                SetInfo::Width(width) => {
+                    let previous_dynamic_resolution = self.shader_view.get_dynamic_resolution();
+
+                    self.config.view.width = *width as i64;
+                    self.shader_view.set_dynamic_resolution(true);
+                    self.shader_view.set_resolution(
+                        display,
+                        (*width as usize, self.shader_view.get_resolution().1),
+                    )?;
+
+                    self.shader_view
+                        .set_dynamic_resolution(previous_dynamic_resolution);
+                }
+                SetInfo::Height(height) => {
+                    let previous_dynamic_resolution = self.shader_view.get_dynamic_resolution();
+
+                    self.config.view.height = *height as i64;
+                    self.shader_view.set_dynamic_resolution(true);
+                    self.shader_view.set_resolution(
+                        display,
+                        (self.shader_view.get_resolution().0, *height as usize),
+                    )?;
+
+                    self.shader_view
+                        .set_dynamic_resolution(previous_dynamic_resolution);
+                }
+                SetInfo::TargetFps(target_fps) => {
+                    self.config.view.target_fps = *target_fps as f32;
+                    self.shader_view.set_target_fps(*target_fps);
+                }
+                SetInfo::DynamicResolution(dynamic_resolution) => {
+                    self.config.view.dynamic = *dynamic_resolution;
+                    self.shader_view.set_dynamic_resolution(*dynamic_resolution);
+                }
+                SetInfo::VSync(vsync) => {
+                    self.config.view.vsync = *vsync;
+                }
+                SetInfo::Fullscreen(fullscreen) => {
+                    self.config.view.fullscreen = *fullscreen;
+                }
+                SetInfo::LockedSpeed(locked_speed) => {
+                    self.config.view.locked_speed = *locked_speed;
+                }
+                SetInfo::Screenshot(screenshot) => {
+                    self.config.view.screenshot = *screenshot;
+                }
+            },
+            Message::RemoveRenderStage(render_stage_index) => {
+                self.shader_view.remove_render_stage(*render_stage_index);
+            }
+            Message::AddRenderStage(render_stage_config) => {
+                self.shader_view.add_render_stage(
+                    display,
+                    Stage::from_config(&render_stage_config.name, display, render_stage_config)
+                        .context("Failed to build render stage")?,
+                )?;
+            }
+            Message::UpdateRenderStage(render_stage_index, message) => {
+                if let Some(ref mut render_stage) = self
+                    .shader_view
+                    .get_render_chain()
+                    .get_mut(*render_stage_index)
+                {
+                    match message {
+                        RenderStageUpdate::Filter(filter_name) => {
+                            render_stage.set_filter(filter_name)
+                        }
+                        RenderStageUpdate::FilterModeParams(filter_mode_params) => {
+                            render_stage.set_filter_mode_params(filter_mode_params)
+                        }
+                        RenderStageUpdate::Variable(variable_name, variable_value) => {
+                            render_stage.set_variable(display, variable_name, variable_value)?;
+                        }
+                        RenderStageUpdate::Input(input_name, input) => {
+                            render_stage.set_input(input_name, input)
+                        }
+                        RenderStageUpdate::Name(name) => render_stage.set_name(name),
+                    }
+                }
+            }
+            Message::UpdateFinalStage(message) => {
+                let render_stage = self.shader_view.get_final_stage();
+                match message {
+                    RenderStageUpdate::Filter(filter_name) => render_stage.set_filter(filter_name),
+                    RenderStageUpdate::FilterModeParams(filter_mode_params) => {
+                        render_stage.set_filter_mode_params(filter_mode_params)
+                    }
+                    RenderStageUpdate::Variable(variable_name, variable_value) => {
+                        render_stage.set_variable(display, variable_name, variable_value)?;
+                    }
+                    RenderStageUpdate::Input(input_name, input) => {
+                        render_stage.set_input(input_name, input)
+                    }
+                    RenderStageUpdate::Name(name) => render_stage.set_name(name),
+                }
             }
         }
 
@@ -172,8 +299,6 @@ pub fn start_wvr(
                     wvr.set_focused(focused);
                 } else if let WindowEvent::CursorMoved { position, .. } = event {
                     wvr.set_mouse_position((position.x, position.y));
-                } else {
-                    //println!("{:?}", event);
                 }
             }
             Event::RedrawRequested(_) => {
@@ -187,9 +312,15 @@ pub fn start_wvr(
                     return;
                 }
 
+                if let Err(error) = wvr.render_stages(&display) {
+                    eprintln!("Failed to render stages: {:?}", error);
+
+                    *control_flow = ControlFlow::Exit;
+                }
+
                 let mut window_frame = display.draw();
-                if let Err(error) = wvr.render(&display, &mut window_frame) {
-                    eprintln!("Failed to update app: {:?}", error);
+                if let Err(error) = wvr.render_final_stage(&display, &mut window_frame) {
+                    eprintln!("Failed to render to window: {:?}", error);
 
                     *control_flow = ControlFlow::Exit;
                 }
@@ -215,21 +346,7 @@ pub fn start_wvr(
         }
 
         for message in order_receiver.try_iter() {
-            match message {
-                Message::Insert((input_name, input_config)) => {
-                    match utils::input_from_config(&wvr.project_path, &input_config, &input_name) {
-                        Ok(input_provider) => {
-                            wvr.uniform_sources.insert(input_name, input_provider);
-                        }
-                        Err(e) => eprintln!("{:?}", e),
-                    }
-                }
-                Message::Set(set_info) => match set_info {
-                    SetInfo::BPM(bpm) => {
-                        wvr.shader_view.set_bpm(bpm);
-                    }
-                },
-            }
+            wvr.handle_message(&display, &message).unwrap();
         }
     });
 }
