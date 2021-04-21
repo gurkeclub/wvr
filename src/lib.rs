@@ -223,6 +223,10 @@ impl Wvr {
             Message::RemoveRenderStage(render_stage_index) => {
                 self.shader_view.remove_render_stage(*render_stage_index);
             }
+            Message::MoveRenderStage(original_index, target_index) => {
+                self.shader_view
+                    .move_render_stage(*original_index, *target_index);
+            }
             Message::AddRenderStage(render_stage_config) => {
                 self.shader_view.add_render_stage(
                     display,
