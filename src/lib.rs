@@ -273,6 +273,29 @@ impl Wvr {
                     RenderStageUpdate::Name(name) => render_stage.set_name(name),
                 }
             }
+            Message::AddInput(input_name, input_config) => {
+                match utils::input_from_config(&self.project_path, &input_config, &input_name) {
+                    Ok(input_provider) => {
+                        self.uniform_sources
+                            .insert(input_name.clone(), input_provider);
+                    }
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            }
+            Message::UpdateInput(input_name, input_order) => {
+                if let Some(input) = self.uniform_sources.get_mut(input_name) {
+                    // TODO
+                }
+            }
+            Message::RenameInput(old_input_name, new_input_name) => {
+                if let Some(mut input) = self.uniform_sources.remove(old_input_name) {
+                    input.set_name(new_input_name);
+                    self.uniform_sources.insert(new_input_name.clone(), input);
+                }
+            }
+            Message::RemoveInput(input_name) => {
+                self.uniform_sources.remove(input_name);
+            }
         }
 
         Ok(())

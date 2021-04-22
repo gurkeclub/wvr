@@ -2435,9 +2435,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.69"
+version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48fe99c6bd8b1cc636890bcc071842de909d902c81ac7dab53ba33c421ab8ffb"
+checksum = "b9505f307c872bab8eb46f77ae357c8eba1fdacead58ee5a850116b1d7f82883"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3045,7 +3045,7 @@ dependencies = [
 
 [[package]]
 name = "wvr"
-version = "0.1.20"
+version = "0.1.21"
 dependencies = [
  "anyhow",
  "clap",
@@ -3065,8 +3065,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-cam"
-version = "0.1.0"
-source = "git+https://github.com/gurkeclub/wvr-cam.git?branch=main#13b9932b361453abf848cc4608507d1ef8c11cef"
+version = "0.1.1"
+source = "git+https://github.com/gurkeclub/wvr-cam.git?branch=main#6cca76b5543c6f5faa2a4316dded6feca2cad2da"
 dependencies = [
  "anyhow",
  "gstreamer",
@@ -3079,8 +3079,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-com"
-version = "0.1.3"
-source = "git+https://github.com/gurkeclub/wvr-com.git?branch=main#1dd8282793a582300756e0892709162a0b65bd68"
+version = "0.1.4"
+source = "git+https://github.com/gurkeclub/wvr-com.git?branch=main#a7a9f379762445fb4af11c7f0e98c3de4e01b2a0"
 dependencies = [
  "message-io",
  "serde",
@@ -3090,8 +3090,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-data"
-version = "0.1.6"
-source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#5426697dc6e7b32af9744e590b6975dbc51b4955"
+version = "0.1.7"
+source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#26a4bc73c4819b0e5b24222c236e2262d1e23643"
 dependencies = [
  "anyhow",
  "directories-next",
@@ -3101,8 +3101,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-image"
-version = "0.1.0"
-source = "git+https://github.com/gurkeclub/wvr-image.git?branch=main#5e59f17002d4744f899ccaa6167b757ed2087440"
+version = "0.1.1"
+source = "git+https://github.com/gurkeclub/wvr-image.git?branch=main#8e94ed9a634e5b69b2ef0d7be8ec90c8b8093423"
 dependencies = [
  "anyhow",
  "image",
@@ -3111,8 +3111,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-midi"
-version = "0.1.0"
-source = "git+https://github.com/gurkeclub/wvr-midi.git?branch=main#6510aa3f78bbf6f5779bc96f7acfaf35e7c53713"
+version = "0.1.1"
+source = "git+https://github.com/gurkeclub/wvr-midi.git?branch=main#525ac8d4b6a8ec8c69c4b2dbfd87d16faf396ccc"
 dependencies = [
  "anyhow",
  "midir",
@@ -3144,8 +3144,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-video"
-version = "0.1.2"
-source = "git+https://github.com/gurkeclub/wvr-video.git?branch=main#5647653f41c55ca88ddc7cf78ed82fe34119c18a"
+version = "0.1.3"
+source = "git+https://github.com/gurkeclub/wvr-video.git?branch=main#ceaa91a70f3a1e8aa979773df7c1ea1b90ad370b"
 dependencies = [
  "anyhow",
  "gstreamer",
