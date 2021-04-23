@@ -229,7 +229,7 @@ pub fn input_from_config<P: AsRef<Path>>(
 
 pub fn load_available_filter_list(
     project_path: &Path,
-) -> Result<HashMap<String, (PathBuf, FilterConfig)>> {
+) -> Result<HashMap<String, (PathBuf, FilterConfig, bool)>> {
     let mut available_filter_list = HashMap::new();
 
     let project_filter_folder_path = project_path.join("filters");
@@ -256,7 +256,7 @@ pub fn load_available_filter_list(
                 serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
                     .unwrap();
 
-            available_filter_list.insert(filter_name, (filter_path, filter_config));
+            available_filter_list.insert(filter_name, (filter_path, filter_config, false));
         }
     }
 
@@ -282,7 +282,7 @@ pub fn load_available_filter_list(
 
             available_filter_list
                 .entry(filter_name)
-                .or_insert((filter_path, filter_config));
+                .or_insert((filter_path, filter_config, true));
         }
     }
 

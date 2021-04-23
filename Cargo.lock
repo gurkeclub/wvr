@@ -3045,7 +3045,7 @@ dependencies = [
 
 [[package]]
 name = "wvr"
-version = "0.1.23"
+version = "0.1.24"
 dependencies = [
  "anyhow",
  "clap",
@@ -3102,7 +3102,7 @@ dependencies = [
 [[package]]
 name = "wvr-image"
 version = "0.1.2"
-source = "git+https://github.com/gurkeclub/wvr-image.git?branch=main#0da328759ba60091d85277b00a26f7442f6de6a5"
+source = "git+https://github.com/gurkeclub/wvr-image.git?branch=main#afcd6b33bb60da18e216e64a4b7dbc55a247c95e"
 dependencies = [
  "anyhow",
  "image",
@@ -3122,8 +3122,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-rendering"
-version = "0.1.14"
-source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#ba92ceafb44a0798f4f00792551177dace217b33"
+version = "0.1.15"
+source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#eb0a39dc59c842240187cd0001510276fe36b3b1"
 dependencies = [
  "anyhow",
  "glium",
