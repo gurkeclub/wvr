@@ -15,9 +15,9 @@ use glium::Display;
 use glium::Frame;
 use glutin::event::WindowEvent;
 
-use wvr_com::data::{Message, RenderStageUpdate, SetInfo};
-use wvr_data::config::project_config::ProjectConfig;
-use wvr_data::InputProvider;
+use wvr_com::data::{InputUpdate, Message, RenderStageUpdate, SetInfo};
+use wvr_data::config::project_config::{ProjectConfig, Speed};
+use wvr_data::{DataHolder, InputProvider};
 use wvr_rendering::stage::Stage;
 use wvr_rendering::RGBAImageData;
 use wvr_rendering::ShaderView;
@@ -284,7 +284,25 @@ impl Wvr {
             }
             Message::UpdateInput(input_name, input_order) => {
                 if let Some(input) = self.uniform_sources.get_mut(input_name) {
-                    // TODO
+                    match input_order {
+                        InputUpdate::SetHeight(new_height) => {
+                            input.set_property("height", &DataHolder::Int(*new_height as i32))
+                        }
+                        InputUpdate::SetWidth(new_width) => {
+                            input.set_property("width", &DataHolder::Int(*new_width as i32))
+                        }
+                        InputUpdate::SetPath(new_path) => {
+                            input.set_property("path", &DataHolder::String(new_path.clone()))
+                        }
+                        InputUpdate::SetSpeed(new_speed) => match new_speed {
+                            Speed::Beats(new_speed) => {
+                                input.set_property("speed_beats", &DataHolder::Float(*new_speed))
+                            }
+                            Speed::Fps(new_speed) => {
+                                input.set_property("speed_fps", &DataHolder::Float(*new_speed))
+                            }
+                        },
+                    }
                 }
             }
             Message::RenameInput(old_input_name, new_input_name) => {
