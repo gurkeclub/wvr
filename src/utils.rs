@@ -236,49 +236,54 @@ pub fn load_available_filter_list(
     let wvr_filter_folder_path = wvr_data::get_filters_path();
 
     // Load filters from project
-    for folder_entry in project_filter_folder_path.read_dir()? {
-        let filter_path = folder_entry?.path();
-        let filter_config_path = filter_path.join("config.json");
-        if !filter_config_path.exists() {
-            continue;
+
+    if project_filter_folder_path.exists() {
+        for folder_entry in project_filter_folder_path.read_dir()? {
+            let filter_path = folder_entry?.path();
+            let filter_config_path = filter_path.join("config.json");
+            if !filter_config_path.exists() {
+                continue;
+            }
+
+            let filter_name = filter_path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+
+            let filter_config: FilterConfig =
+                serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
+                    .unwrap();
+
+            available_filter_list.insert(filter_name, (filter_path, filter_config));
         }
-
-        let filter_name = filter_path
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-
-        let filter_config: FilterConfig =
-            serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
-                .unwrap();
-
-        available_filter_list.insert(filter_name, (filter_path, filter_config));
     }
 
     // Load filters provided by wvr
-    for folder_entry in wvr_filter_folder_path.read_dir()? {
-        let filter_path = folder_entry?.path();
-        let filter_config_path = filter_path.join("config.json");
-        if !filter_config_path.exists() {
-            continue;
+    if wvr_filter_folder_path.exists() {
+        for folder_entry in wvr_filter_folder_path.read_dir()? {
+            let filter_path = folder_entry?.path();
+            let filter_config_path = filter_path.join("config.json");
+            if !filter_config_path.exists() {
+                continue;
+            }
+
+            let filter_name = filter_path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+
+            let filter_config: FilterConfig =
+                serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
+                    .unwrap();
+
+            available_filter_list
+                .entry(filter_name)
+                .or_insert((filter_path, filter_config));
         }
-
-        let filter_name = filter_path
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-
-        let filter_config: FilterConfig =
-            serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
-                .unwrap();
-
-        available_filter_list
-            .entry(filter_name)
-            .or_insert((filter_path, filter_config));
     }
 
     Ok(available_filter_list)
