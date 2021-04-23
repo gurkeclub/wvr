@@ -253,6 +253,9 @@ impl Wvr {
                         RenderStageUpdate::Input(input_name, input) => {
                             render_stage.set_input(input_name, input)
                         }
+                        RenderStageUpdate::Precision(precision) => {
+                            render_stage.set_precision(precision)
+                        }
                         RenderStageUpdate::Name(name) => render_stage.set_name(name),
                     }
                 }
@@ -269,6 +272,9 @@ impl Wvr {
                     }
                     RenderStageUpdate::Input(input_name, input) => {
                         render_stage.set_input(input_name, input)
+                    }
+                    RenderStageUpdate::Precision(precision) => {
+                        render_stage.set_precision(precision)
                     }
                     RenderStageUpdate::Name(name) => render_stage.set_name(name),
                 }

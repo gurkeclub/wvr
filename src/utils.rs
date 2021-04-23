@@ -200,7 +200,6 @@ pub fn input_from_config<P: AsRef<Path>>(
         } => {
             let path = get_path_for_resource(&project_path, &path);
 
-            println!("{:?}", path);
             Box::new(PictureProvider::new(
                 &path,
                 input_name.to_owned(),
