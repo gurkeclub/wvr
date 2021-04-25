@@ -3090,8 +3090,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-data"
-version = "0.1.9"
-source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#e67a04883ff50912a483b8427cab4eb18827eee2"
+version = "0.1.10"
+source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#d2beae7106e83eab79d81d8fa370ff60356a7a51"
 dependencies = [
  "anyhow",
  "directories-next",
@@ -3144,8 +3144,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-video"
-version = "0.1.5"
-source = "git+https://github.com/gurkeclub/wvr-video.git?branch=main#b5cae2acc5b0a4bb52bff33ad403b8f31573ba46"
+version = "0.1.6"
+source = "git+https://github.com/gurkeclub/wvr-video.git?branch=main#9c6fa5f6eea97082182b562b5d4f391e33e9e317"
 dependencies = [
  "anyhow",
  "gstreamer",

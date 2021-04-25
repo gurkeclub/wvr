@@ -301,8 +301,8 @@ impl Wvr {
                             input.set_property("path", &DataHolder::String(new_path.clone()))
                         }
                         InputUpdate::SetSpeed(new_speed) => match new_speed {
-                            Speed::Beats(new_speed) => {
-                                input.set_property("speed_beats", &DataHolder::Float(*new_speed))
+                            Speed::Fpb(new_speed) => {
+                                input.set_property("speed_fpb", &DataHolder::Float(*new_speed))
                             }
                             Speed::Fps(new_speed) => {
                                 input.set_property("speed_fps", &DataHolder::Float(*new_speed))
