@@ -227,44 +227,31 @@ pub fn input_from_config<P: AsRef<Path>>(
 }
 
 pub fn load_available_filter_list(
-    project_path: &Path,
+    searched_path: &Path,
+    is_system_filter: bool,
 ) -> Result<HashMap<String, (PathBuf, FilterConfig, bool)>> {
     let mut available_filter_list = HashMap::new();
 
-    let project_filter_folder_path = project_path.join("filters");
-    let wvr_filter_folder_path = wvr_data::get_filters_path();
-
-    // Load filters from project
-
-    if project_filter_folder_path.exists() {
-        for folder_entry in project_filter_folder_path.read_dir()? {
+    if searched_path.exists() && searched_path.is_dir() {
+        for folder_entry in searched_path.read_dir()? {
             let filter_path = folder_entry?.path();
             let filter_config_path = filter_path.join("config.json");
+
             if !filter_config_path.exists() {
-                continue;
-            }
+                let prefix = filter_path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_owned();
 
-            let filter_name = filter_path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string();
+                let subfolder_filters = load_available_filter_list(&filter_path, is_system_filter)?;
 
-            let filter_config: FilterConfig =
-                serde_json::from_reader::<File, FilterConfig>(File::open(&filter_config_path)?)
-                    .unwrap();
+                for (filter_name, filter_info) in subfolder_filters {
+                    available_filter_list
+                        .insert(format!("{:}/{:}", prefix, filter_name), filter_info);
+                }
 
-            available_filter_list.insert(filter_name, (filter_path, filter_config, false));
-        }
-    }
-
-    // Load filters provided by wvr
-    if wvr_filter_folder_path.exists() {
-        for folder_entry in wvr_filter_folder_path.read_dir()? {
-            let filter_path = folder_entry?.path();
-            let filter_config_path = filter_path.join("config.json");
-            if !filter_config_path.exists() {
                 continue;
             }
 
@@ -280,8 +267,7 @@ pub fn load_available_filter_list(
                     .unwrap();
 
             available_filter_list
-                .entry(filter_name)
-                .or_insert((filter_path, filter_config, true));
+                .insert(filter_name, (filter_path, filter_config, is_system_filter));
         }
     }
 

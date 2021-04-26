@@ -41,7 +41,12 @@ pub struct Wvr {
 
 impl Wvr {
     pub fn new(project_path: &Path, config: ProjectConfig, display: &dyn Facade) -> Result<Self> {
-        let available_filter_list = utils::load_available_filter_list(project_path)?;
+        let mut available_filter_list =
+            utils::load_available_filter_list(&wvr_data::get_filters_path(), true)?;
+        available_filter_list.extend(utils::load_available_filter_list(
+            &project_path.join("filters"),
+            false,
+        )?);
 
         let shader_view = ShaderView::new(
             config.bpm as f64,
