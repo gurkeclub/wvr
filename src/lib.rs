@@ -255,6 +255,13 @@ impl Wvr {
                         RenderStageUpdate::Variable(variable_name, variable_value) => {
                             render_stage.set_variable(display, variable_name, variable_value)?;
                         }
+                        RenderStageUpdate::VariableAutomation(
+                            variable_name,
+                            variable_automation,
+                        ) => {
+                            render_stage
+                                .set_variable_automation(variable_name, variable_automation)?;
+                        }
                         RenderStageUpdate::Input(input_name, input) => {
                             render_stage.set_input(input_name, input)
                         }
@@ -274,6 +281,9 @@ impl Wvr {
                     }
                     RenderStageUpdate::Variable(variable_name, variable_value) => {
                         render_stage.set_variable(display, variable_name, variable_value)?;
+                    }
+                    RenderStageUpdate::VariableAutomation(variable_name, variable_automation) => {
+                        render_stage.set_variable_automation(variable_name, variable_automation)?;
                     }
                     RenderStageUpdate::Input(input_name, input) => {
                         render_stage.set_input(input_name, input)

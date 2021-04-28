@@ -3080,8 +3080,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-com"
-version = "0.1.5"
-source = "git+https://github.com/gurkeclub/wvr-com.git?branch=main#0cd24f7ca31a096c2be8a3392056634089063e09"
+version = "0.1.6"
+source = "git+https://github.com/gurkeclub/wvr-com.git?branch=main#4b06cad33c7539059e1b441f9d9608e9edf94dec"
 dependencies = [
  "message-io",
  "serde",
