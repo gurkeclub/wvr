@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
+use std::{collections::HashMap, time::Instant};
 
 use anyhow::{Context, Result};
 
@@ -26,15 +26,34 @@ pub mod utils;
 
 pub struct Wvr {
     pub project_path: PathBuf,
-    pub config: ProjectConfig,
 
     pub uniform_sources: HashMap<String, Box<dyn InputProvider>>,
 
     pub shader_view: ShaderView,
 
+    width: usize,
+    height: usize,
+
+    fullscreen: bool,
+    vsync: bool,
+
+    bpm: f64,
+    target_fps: f64,
+    locked_speed: bool,
+
+    last_update_time: Instant,
+
+    frame_count: usize,
+    pub time: f64,
+    pub beat: f64,
+
+    stopped: bool,
+    playing: bool,
+
     focused: bool,
     mouse_position: (f64, f64),
 
+    screenshot: bool,
     screenshot_sender: SyncSender<(RGBAImageData, usize)>,
     _screenshot_thread: thread::JoinHandle<()>,
 }
@@ -49,7 +68,6 @@ impl Wvr {
         )?);
 
         let shader_view = ShaderView::new(
-            config.bpm as f64,
             &config.view,
             &config.render_chain,
             &config.final_stage,
@@ -103,15 +121,34 @@ impl Wvr {
 
         Ok(Self {
             project_path: project_path.to_owned(),
-            config,
 
             uniform_sources,
 
             shader_view,
 
+            width: config.view.width as usize,
+            height: config.view.height as usize,
+
+            vsync: config.view.vsync,
+            fullscreen: config.view.fullscreen,
+
+            stopped: false,
+            playing: false,
+
+            bpm: config.bpm as f64,
+            target_fps: config.view.target_fps as f64,
+            locked_speed: config.view.locked_speed,
+
+            last_update_time: Instant::now(),
+
+            frame_count: 0,
+            time: 0.0,
+            beat: 0.0,
+
             focused: false,
             mouse_position: (0.0, 0.0),
 
+            screenshot: config.view.screenshot,
             screenshot_sender,
             _screenshot_thread: screenshot_thread,
         })
@@ -126,10 +163,44 @@ impl Wvr {
         self.shader_view.set_mouse_position(self.mouse_position);
     }
 
+    fn update_time(&mut self, time_diff: f64, beat_diff: f64) {
+        self.time += time_diff;
+        self.beat += beat_diff;
+
+        for (_, source) in self.uniform_sources.iter_mut() {
+            source.set_beat(self.beat, self.locked_speed);
+            source.set_time(self.time, self.locked_speed);
+        }
+    }
+
     pub fn update(&mut self, display: &dyn Facade, resolution: (usize, usize)) -> Result<()> {
+        let new_update_time = Instant::now();
+
+        let beat_diff = if self.locked_speed {
+            self.bpm / (60.0 * self.target_fps)
+        } else {
+            let time_diff = new_update_time - self.last_update_time;
+            time_diff.as_secs_f64() * self.bpm / 60.0
+        };
+
+        let time_diff = if self.locked_speed {
+            1.0 / self.target_fps
+        } else {
+            (new_update_time - self.last_update_time).as_secs_f64()
+        };
+
+        self.update_time(time_diff, beat_diff);
+
         self.shader_view.set_resolution(display, resolution)?;
-        self.shader_view
-            .update(display, &mut self.uniform_sources)?;
+        self.shader_view.update(
+            display,
+            &mut self.uniform_sources,
+            self.time,
+            self.beat,
+            self.frame_count,
+        )?;
+
+        self.last_update_time = new_update_time;
 
         Ok(())
     }
@@ -147,26 +218,44 @@ impl Wvr {
     ) -> Result<()> {
         self.shader_view.render_final_stage(display, window_frame)?;
 
-        if self.config.view.screenshot {
-            if let Err(e) = self.screenshot_sender.send((
-                self.shader_view.take_screenshot(display)?,
-                self.shader_view.get_frame_count(),
-            )) {
+        if self.screenshot {
+            if let Err(e) = self
+                .screenshot_sender
+                .send((self.shader_view.take_screenshot(display)?, self.frame_count))
+            {
                 eprintln!(
                     "Screenshot processing thread seems to have crashed:\n {:?}",
                     e
                 );
-                self.config.view.screenshot = false;
+                self.screenshot = false;
             }
         }
+
+        self.frame_count += 1;
 
         Ok(())
     }
 
     pub fn handle_message(&mut self, display: &dyn Facade, message: &Message) -> Result<()> {
         match message {
+            Message::Start => {
+                self.play()?;
+            }
+            Message::Pause => {
+                self.pause()?;
+            }
+            Message::Stop => {
+                self.stop();
+            }
             Message::Insert((input_name, input_config)) => {
-                match utils::input_from_config(&self.project_path, &input_config, &input_name) {
+                match utils::input_from_config(
+                    &self.project_path,
+                    &input_config,
+                    &input_name,
+                    self.beat,
+                    self.time,
+                    self.playing,
+                ) {
                     Ok(input_provider) => {
                         self.uniform_sources
                             .insert(input_name.clone(), input_provider);
@@ -176,12 +265,12 @@ impl Wvr {
             }
             Message::Set(set_info) => match set_info {
                 SetInfo::Bpm(bpm) => {
-                    self.shader_view.set_bpm(*bpm);
+                    self.bpm = *bpm;
                 }
                 SetInfo::Width(width) => {
                     let previous_dynamic_resolution = self.shader_view.get_dynamic_resolution();
 
-                    self.config.view.width = *width as i64;
+                    self.width = *width;
                     self.shader_view.set_dynamic_resolution(true);
                     self.shader_view.set_resolution(
                         display,
@@ -194,7 +283,7 @@ impl Wvr {
                 SetInfo::Height(height) => {
                     let previous_dynamic_resolution = self.shader_view.get_dynamic_resolution();
 
-                    self.config.view.height = *height as i64;
+                    self.height = *height;
                     self.shader_view.set_dynamic_resolution(true);
                     self.shader_view.set_resolution(
                         display,
@@ -205,24 +294,22 @@ impl Wvr {
                         .set_dynamic_resolution(previous_dynamic_resolution);
                 }
                 SetInfo::TargetFps(target_fps) => {
-                    self.config.view.target_fps = *target_fps as f32;
-                    self.shader_view.set_target_fps(*target_fps);
+                    self.target_fps = *target_fps;
                 }
                 SetInfo::DynamicResolution(dynamic_resolution) => {
-                    self.config.view.dynamic = *dynamic_resolution;
                     self.shader_view.set_dynamic_resolution(*dynamic_resolution);
                 }
                 SetInfo::VSync(vsync) => {
-                    self.config.view.vsync = *vsync;
+                    self.vsync = *vsync;
                 }
                 SetInfo::Fullscreen(fullscreen) => {
-                    self.config.view.fullscreen = *fullscreen;
+                    self.fullscreen = *fullscreen;
                 }
                 SetInfo::LockedSpeed(locked_speed) => {
-                    self.config.view.locked_speed = *locked_speed;
+                    self.locked_speed = *locked_speed;
                 }
                 SetInfo::Screenshot(screenshot) => {
-                    self.config.view.screenshot = *screenshot;
+                    self.screenshot = *screenshot;
                 }
             },
             Message::RemoveRenderStage(render_stage_index) => {
@@ -295,7 +382,14 @@ impl Wvr {
                 }
             }
             Message::AddInput(input_name, input_config) => {
-                match utils::input_from_config(&self.project_path, &input_config, &input_name) {
+                match utils::input_from_config(
+                    &self.project_path,
+                    &input_config,
+                    &input_name,
+                    self.beat,
+                    self.time,
+                    self.playing,
+                ) {
                     Ok(input_provider) => {
                         self.uniform_sources
                             .insert(input_name.clone(), input_provider);
@@ -340,10 +434,62 @@ impl Wvr {
         Ok(())
     }
 
+    pub fn is_playing(&self) -> bool {
+        self.playing
+    }
+
     pub fn stop(&mut self) {
-        for (_input_name, source) in self.uniform_sources.iter_mut() {
-            source.stop();
+        if self.stopped {
+            return;
         }
+
+        for (_input_name, source) in self.uniform_sources.iter_mut() {
+            if let Err(e) = source.stop() {
+                eprintln!("{:?}", e);
+            }
+        }
+
+        self.stopped = true;
+        self.playing = false;
+    }
+
+    pub fn pause(&mut self) -> Result<()> {
+        if self.stopped {
+            return Ok(());
+        }
+
+        for (_input_name, source) in self.uniform_sources.iter_mut() {
+            source.pause()?;
+        }
+
+        self.playing = false;
+
+        Ok(())
+    }
+
+    pub fn play(&mut self) -> Result<()> {
+        if self.stopped || self.playing {
+            return Ok(());
+        }
+
+        self.last_update_time = Instant::now();
+        self.update_time(0.0, 0.0);
+
+        for (_input_name, source) in self.uniform_sources.iter_mut() {
+            source.play()?;
+        }
+
+        self.playing = true;
+
+        Ok(())
+    }
+
+    pub fn get_width(&self) -> usize {
+        self.width
+    }
+
+    pub fn get_height(&self) -> usize {
+        self.height
     }
 }
 

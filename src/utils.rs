@@ -187,6 +187,9 @@ pub fn input_from_config<P: AsRef<Path>>(
     project_path: P,
     input_config: &InputConfig,
     input_name: &str,
+    current_beat: f64,
+    current_time: f64,
+    wvr_playing: bool,
 ) -> Result<Box<dyn InputProvider>> {
     let input: Box<dyn InputProvider> = match input_config {
         InputConfig::Video {
@@ -201,6 +204,9 @@ pub fn input_from_config<P: AsRef<Path>>(
                 input_name.to_owned(),
                 (*width, *height),
                 *speed,
+                current_beat,
+                current_time,
+                wvr_playing,
             )?)
         }
         InputConfig::Picture {
@@ -291,7 +297,8 @@ pub fn load_inputs(
     let mut uniform_sources = HashMap::new();
 
     for (input_name, input_config) in input_list {
-        let input_provider = input_from_config(project_path, &input_config, &input_name)?;
+        let input_provider =
+            input_from_config(project_path, &input_config, &input_name, 0.0, 0.0, true)?;
 
         uniform_sources.insert(input_name.clone(), input_provider);
     }
