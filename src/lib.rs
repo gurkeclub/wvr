@@ -517,17 +517,19 @@ pub fn start_wvr(
                 let new_resolution = display.get_framebuffer_dimensions();
                 let new_resolution = (new_resolution.0 as usize, new_resolution.1 as usize);
 
-                if let Err(error) = wvr.update(&display, new_resolution) {
-                    eprintln!("Failed to update app: {:?}", error);
+                if wvr.is_playing() {
+                    if let Err(error) = wvr.update(&display, new_resolution) {
+                        eprintln!("Failed to update app: {:?}", error);
 
-                    *control_flow = ControlFlow::Exit;
-                    return;
-                }
+                        *control_flow = ControlFlow::Exit;
+                        return;
+                    }
 
-                if let Err(error) = wvr.render_stages(&display) {
-                    eprintln!("Failed to render stages: {:?}", error);
+                    if let Err(error) = wvr.render_stages(&display) {
+                        eprintln!("Failed to render stages: {:?}", error);
 
-                    *control_flow = ControlFlow::Exit;
+                        *control_flow = ControlFlow::Exit;
+                    }
                 }
 
                 let mut window_frame = display.draw();
