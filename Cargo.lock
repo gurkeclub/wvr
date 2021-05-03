@@ -2109,9 +2109,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e3bad0ee36814ca07d7968269dd4b7ec89ec2da10c4bb613928d3077083c232"
+checksum = "410f7acf3cb3a44527c5d9546bad4bf4e6c460915d5f9f2fc524498bfe8f70ce"
 
 [[package]]
 name = "rustls"
@@ -2913,7 +2913,7 @@ dependencies = [
 
 [[package]]
 name = "wvr"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "clap",
@@ -2960,8 +2960,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-data"
-version = "0.1.12"
-source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#0b24a43624f3ab22963437101c5d44f638f604d0"
+version = "0.1.13"
+source = "git+https://github.com/gurkeclub/wvr-data.git?branch=main#da96920a6be32e2920c9ff384e0f27f49e303a47"
 dependencies = [
  "anyhow",
  "directories-next",
@@ -2971,8 +2971,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-image"
-version = "0.1.2"
-source = "git+https://github.com/gurkeclub/wvr-image.git?branch=main#afcd6b33bb60da18e216e64a4b7dbc55a247c95e"
+version = "0.1.3"
+source = "git+https://github.com/gurkeclub/wvr-image.git?branch=main#f4c5eb2e86cea1ecca8ce967b6bec419c426c98a"
 dependencies = [
  "anyhow",
  "image",
@@ -2992,8 +2992,8 @@ dependencies = [
 
 [[package]]
 name = "wvr-rendering"
-version = "0.1.18"
-source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#39e82b4bce08cb540ebc1ee61c99d9c5d79d88ff"
+version = "0.1.20"
+source = "git+https://github.com/gurkeclub/wvr-rendering.git?branch=main#8ed89d055eac196c0be9086ee8be74962bde8a36"
 dependencies = [
  "anyhow",
  "glium",

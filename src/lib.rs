@@ -16,7 +16,7 @@ use glium::Frame;
 use glutin::event::WindowEvent;
 
 use wvr_com::data::{InputUpdate, Message, RenderStageUpdate, SetInfo};
-use wvr_data::config::project_config::{ProjectConfig, Speed};
+use wvr_data::config::project_config::{ProjectConfig, SampledInput, Speed};
 use wvr_data::{DataHolder, InputProvider};
 use wvr_rendering::stage::Stage;
 use wvr_rendering::RGBAImageData;
@@ -219,15 +219,35 @@ impl Wvr {
         self.shader_view.render_final_stage(display, window_frame)?;
 
         if self.screenshot {
-            if let Err(e) = self
-                .screenshot_sender
-                .send((self.shader_view.take_screenshot(display)?, self.frame_count))
+            let mut currently_rendered_stage = None;
+            if let Some(final_stage_input) = self
+                .shader_view
+                .get_final_stage()
+                .get_input_map()
+                .get("iChannel0")
             {
-                eprintln!(
-                    "Screenshot processing thread seems to have crashed:\n {:?}",
-                    e
-                );
-                self.screenshot = false;
+                match final_stage_input {
+                    SampledInput::Nearest(input_name) => {
+                        currently_rendered_stage = Some(input_name.to_string())
+                    }
+                    SampledInput::Linear(input_name) => {
+                        currently_rendered_stage = Some(input_name.to_string())
+                    }
+                    SampledInput::Mipmaps(input_name) => {
+                        currently_rendered_stage = Some(input_name.to_string())
+                    }
+                }
+            }
+            if let Some(currently_rendered_stage) = currently_rendered_stage {
+                if let Some(texture) = self.shader_view.take_screenshot(&currently_rendered_stage) {
+                    if let Err(e) = self.screenshot_sender.send((texture?, self.frame_count)) {
+                        eprintln!(
+                            "Screenshot processing thread seems to have crashed:\n {:?}",
+                            e
+                        );
+                        self.screenshot = false;
+                    }
+                }
             }
         }
 
