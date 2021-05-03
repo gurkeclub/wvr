@@ -128,11 +128,11 @@ pub fn get_config() -> Result<(PathBuf, ProjectConfig)> {
                 .join("config.json"),
         )
     } else if let Some(shadertoy_url) = matches.value_of("shadertoy") {
-        wvr_shadertoy::create_project_from_shadertoy_url(
+        Some(wvr_shadertoy::create_project_from_shadertoy_url(
             data_path.as_path(),
             shadertoy_url,
             matches.value_of("shadertoy-key").unwrap(),
-        )
+        )?)
     } else {
         None
     };
