@@ -63,6 +63,7 @@ pub struct Wvr {
     mouse_position: (f64, f64),
 
     screenshot: bool,
+    screenshot_frame_count: i64,
     screenshot_sender: SyncSender<(RGBAImageData, usize)>,
     _screenshot_thread: Option<thread::JoinHandle<()>>,
     screenshot_stop: Arc<AtomicBool>,
@@ -92,6 +93,11 @@ impl Wvr {
 
         let screenshot_stop = Arc::new(AtomicBool::new(false));
         let screenshot_thread = if config.view.screenshot {
+            let target_duration = if config.view.screenshot_frame_count > 0 {
+                Some(config.view.screenshot_frame_count as f64 / config.view.target_fps as f64)
+            } else {
+                None
+            };
             let screenshot_stop = screenshot_stop.clone();
             let screenshot_path = config.view.screenshot_path.clone();
             let screenshot_path = PathBuf::from_str(&utils::get_path_for_resource(
@@ -108,7 +114,7 @@ impl Wvr {
             }
 
             let output_path = screenshot_path
-                .join("output.mp4")
+                .join("output.mkv")
                 .to_str()
                 .unwrap()
                 .to_owned();
@@ -120,6 +126,7 @@ impl Wvr {
                     view_config.width as usize,
                     view_config.height as usize,
                     view_config.target_fps as f64,
+                    target_duration,
                 )
                 .unwrap();
 
@@ -137,7 +144,7 @@ impl Wvr {
                             raw_frame[index * 3 + 2] = b;
                         }
                         encoder.encode_frame(
-                            frame_count as f64 * view_config.target_fps as f64,
+                            frame_count as f64 / view_config.target_fps as f64,
                             &raw_frame,
                         );
                     } else if screenshot_stop.load(Ordering::Relaxed) {
@@ -183,6 +190,7 @@ impl Wvr {
             mouse_position: (0.0, 0.0),
 
             screenshot: config.view.screenshot,
+            screenshot_frame_count: config.view.screenshot_frame_count,
             screenshot_sender,
             _screenshot_thread: screenshot_thread,
 
@@ -554,6 +562,15 @@ impl Wvr {
     pub fn get_height(&self) -> usize {
         self.height
     }
+    pub fn get_frame_count(&self) -> usize {
+        self.frame_count
+    }
+    pub fn get_screenshot_frame_count(&self) -> i64 {
+        self.screenshot_frame_count
+    }
+    pub fn get_recoding(&self) -> bool {
+        self.screenshot
+    }
 }
 
 pub fn start_wvr(
@@ -563,6 +580,16 @@ pub fn start_wvr(
     order_receiver: Receiver<Message>,
 ) {
     event_loop.run(move |event, _, control_flow| {
+        if wvr.get_recoding() {
+            if wvr.get_screenshot_frame_count() != -1
+                && wvr.get_frame_count() as i64 >= wvr.get_screenshot_frame_count()
+            {
+                *control_flow = ControlFlow::Exit;
+
+                wvr.stop();
+                return;
+            }
+        }
         match event {
             Event::WindowEvent { event, .. } => {
                 if let WindowEvent::CloseRequested = event {
