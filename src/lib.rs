@@ -1,8 +1,17 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
 use std::{collections::HashMap, time::Instant};
+use std::{fs, str::FromStr};
+use std::{
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
+use std::{
+    sync::mpsc::{sync_channel, Receiver, SyncSender},
+    time::Duration,
+};
 
 use anyhow::{Context, Result};
 
@@ -55,7 +64,8 @@ pub struct Wvr {
 
     screenshot: bool,
     screenshot_sender: SyncSender<(RGBAImageData, usize)>,
-    _screenshot_thread: thread::JoinHandle<()>,
+    _screenshot_thread: Option<thread::JoinHandle<()>>,
+    screenshot_stop: Arc<AtomicBool>,
 }
 
 impl Wvr {
@@ -78,10 +88,17 @@ impl Wvr {
         let (screenshot_sender, screenshot_receiver): (
             SyncSender<(RGBAImageData, usize)>,
             Receiver<(RGBAImageData, usize)>,
-        ) = sync_channel(60);
+        ) = sync_channel(1);
 
-        let screenshot_thread = {
+        let screenshot_stop = Arc::new(AtomicBool::new(false));
+        let screenshot_thread = if config.view.screenshot {
+            let screenshot_stop = screenshot_stop.clone();
             let screenshot_path = config.view.screenshot_path.clone();
+            let screenshot_path = PathBuf::from_str(&utils::get_path_for_resource(
+                project_path,
+                screenshot_path.to_str().unwrap(),
+            ))
+            .unwrap();
 
             if config.view.screenshot && !screenshot_path.exists() {
                 fs::create_dir_all(&screenshot_path).context(format!(
@@ -90,31 +107,48 @@ impl Wvr {
                 ))?;
             }
 
-            thread::spawn(move || {
-                let mut v: Vec<u8> = Vec::new();
-                for (image_data, frame_count) in screenshot_receiver.iter() {
-                    if image_data.data.len() * 3 != v.len() {
-                        v = vec![0; image_data.data.len() * 3];
+            let output_path = screenshot_path
+                .join("output.mp4")
+                .to_str()
+                .unwrap()
+                .to_owned();
+
+            let view_config = config.view.clone();
+            Some(thread::spawn(move || {
+                let mut encoder = wvr_video::encoder::VideoEncoder::new(
+                    &output_path,
+                    view_config.width as usize,
+                    view_config.height as usize,
+                    view_config.target_fps as f64,
+                )
+                .unwrap();
+
+                let pixel_count = (view_config.width * view_config.height) as usize;
+                let mut raw_frame: Vec<u8> = vec![0; pixel_count * 3];
+                loop {
+                    if let Ok((image_data, frame_count)) = screenshot_receiver.try_recv() {
+                        if image_data.data.len() * 3 != raw_frame.len() {
+                            panic!("resolution changed");
+                        }
+
+                        for (index, (r, g, b, _)) in image_data.data.into_iter().enumerate() {
+                            raw_frame[index * 3] = r;
+                            raw_frame[index * 3 + 1] = g;
+                            raw_frame[index * 3 + 2] = b;
+                        }
+                        encoder.encode_frame(
+                            frame_count as f64 * view_config.target_fps as f64,
+                            &raw_frame,
+                        );
+                    } else if screenshot_stop.load(Ordering::Relaxed) {
+                        break;
+                    } else {
+                        thread::sleep(Duration::from_millis(1));
                     }
-
-                    for (index, (a, b, c, _)) in image_data.data.iter().enumerate() {
-                        v[index * 3] = *a;
-                        v[index * 3 + 1] = *b;
-                        v[index * 3 + 2] = *c;
-                    }
-
-                    let image_path = screenshot_path.join(format!("{:012}.bmp", frame_count));
-
-                    image::save_buffer(
-                        &image_path,
-                        &v,
-                        image_data.width,
-                        image_data.height,
-                        image::ColorType::Rgb8,
-                    )
-                    .unwrap();
                 }
-            })
+            }))
+        } else {
+            None
         };
 
         let uniform_sources = utils::load_inputs(project_path, &config.inputs)?;
@@ -151,6 +185,8 @@ impl Wvr {
             screenshot: config.view.screenshot,
             screenshot_sender,
             _screenshot_thread: screenshot_thread,
+
+            screenshot_stop,
         })
     }
 
@@ -174,6 +210,9 @@ impl Wvr {
     }
 
     pub fn update(&mut self, display: &dyn Facade, resolution: (usize, usize)) -> Result<()> {
+        if self.screenshot {
+            self.locked_speed = true;
+        }
         let new_update_time = Instant::now();
 
         let beat_diff = if self.locked_speed {
@@ -191,7 +230,9 @@ impl Wvr {
 
         self.update_time(time_diff, beat_diff);
 
-        self.shader_view.set_resolution(display, resolution)?;
+        if !self.screenshot {
+            self.shader_view.set_resolution(display, resolution)?;
+        }
         self.shader_view.update(
             display,
             &mut self.uniform_sources,
@@ -468,6 +509,8 @@ impl Wvr {
                 eprintln!("{:?}", e);
             }
         }
+
+        self.screenshot_stop.store(true, Ordering::Relaxed);
 
         self.stopped = true;
         self.playing = false;

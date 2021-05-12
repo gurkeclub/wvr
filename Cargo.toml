@@ -1,6 +1,6 @@
 [package]
 name = "wvr"
-version = "0.1.29"
+version = "0.1.30"
 authors = ["gurke.club <contact@gurke.club>"]
 edition = "2018"
 
@@ -13,6 +13,7 @@ git2 = "0.13"
 glium = "0.29"
 image = "0.23"
 
+
 wvr-data = {git = "https://github.com/gurkeclub/wvr-data.git", branch="main"}
 wvr-com = {git = "https://github.com/gurkeclub/wvr-com.git", branch="main"}
 wvr-image = {git = "https://github.com/gurkeclub/wvr-image.git", branch="main"}
@@ -21,3 +22,6 @@ wvr-cam = {git = "https://github.com/gurkeclub/wvr-cam.git", branch="main"}
 wvr-shadertoy = {git = "https://github.com/gurkeclub/wvr-shadertoy.git", branch="main"}
 wvr-midi = {git = "https://github.com/gurkeclub/wvr-midi.git", branch="main"}
 wvr-rendering = {git = "https://github.com/gurkeclub/wvr-rendering.git", branch="main"}
+
+[profile.release]
+debug = true
