@@ -568,7 +568,7 @@ impl Wvr {
     pub fn get_screenshot_frame_count(&self) -> i64 {
         self.screenshot_frame_count
     }
-    pub fn get_recoding(&self) -> bool {
+    pub fn get_recording(&self) -> bool {
         self.screenshot
     }
 }
@@ -580,7 +580,12 @@ pub fn start_wvr(
     order_receiver: Receiver<Message>,
 ) {
     event_loop.run(move |event, _, control_flow| {
-        if wvr.get_recoding() {
+        if wvr.get_recording() {
+            println!(
+                "{:} / {:}",
+                wvr.get_frame_count(),
+                wvr.get_screenshot_frame_count()
+            );
             if wvr.get_screenshot_frame_count() != -1
                 && wvr.get_frame_count() as i64 >= wvr.get_screenshot_frame_count()
             {

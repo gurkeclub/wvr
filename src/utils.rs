@@ -34,7 +34,7 @@ pub fn init_wvr_data_directory() -> Result<()> {
 
     let filter_folder_path = wvr_data::get_filters_path();
 
-    let projects_path = libs_path.join("projects");
+    let projects_path = data_path.join("projects");
 
     if !data_path.exists() {
         println!("Creating data directory at {:?}", &data_path);
@@ -172,6 +172,9 @@ pub fn get_path_for_resource<P: AsRef<Path>>(path: P, resource_path: &str) -> St
             .replace('\\', "/"),
     );
 
+    return resource_path.as_path().to_str().unwrap().to_string();
+
+    /*
     if let Ok(resource_path) = resource_path.canonicalize() {
         resource_path
     } else {
@@ -181,6 +184,7 @@ pub fn get_path_for_resource<P: AsRef<Path>>(path: P, resource_path: &str) -> St
     .to_str()
     .unwrap()
     .to_string()
+     */
 }
 
 pub fn input_from_config<P: AsRef<Path>>(
