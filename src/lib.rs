@@ -1,3 +1,5 @@
+use std::rc::Rc;
+use std::sync::Mutex;
 use std::thread;
 use std::{collections::HashMap, time::Instant};
 use std::{fs, str::FromStr};
@@ -25,18 +27,21 @@ use glium::Frame;
 use glutin::event::WindowEvent;
 
 use wvr_com::data::{InputUpdate, Message, RenderStageUpdate, SetInfo};
-use wvr_data::config::project_config::{ProjectConfig, SampledInput, Speed};
-use wvr_data::{DataHolder, InputProvider};
+use wvr_data::config::project::ProjectConfig;
+use wvr_data::types::{Automation, DataHolder, InputProvider, InputSampler, Speed};
 use wvr_rendering::stage::Stage;
 use wvr_rendering::RGBAImageData;
 use wvr_rendering::ShaderView;
+use wvr_script::Script;
 
 pub mod utils;
 
 pub struct Wvr {
     pub project_path: PathBuf,
 
-    pub uniform_sources: HashMap<String, Box<dyn InputProvider>>,
+    variables: HashMap<String, (DataHolder, Automation)>,
+    env_variable_list: HashMap<String, DataHolder>,
+    pub uniform_sources: Rc<Mutex<HashMap<String, Box<dyn InputProvider>>>>,
 
     pub shader_view: ShaderView,
 
@@ -62,6 +67,8 @@ pub struct Wvr {
     focused: bool,
     mouse_position: (f64, f64),
 
+    main_script: Option<Script>,
+
     screenshot: bool,
     screenshot_frame_count: i64,
     screenshot_sender: SyncSender<(RGBAImageData, usize)>,
@@ -77,6 +84,12 @@ impl Wvr {
             &project_path.join("filters"),
             false,
         )?);
+
+        let env_variable_list = config
+            .variables
+            .iter()
+            .map(|(k, v)| (k.clone(), v.0.clone()))
+            .collect();
 
         let shader_view = ShaderView::new(
             &config.view,
@@ -160,10 +173,19 @@ impl Wvr {
 
         let uniform_sources = utils::load_inputs(project_path, &config.inputs)?;
 
+        let main_script =
+            if let Ok(main_script) = Script::new(project_path.join("src").join("main.rhai")) {
+                Some(main_script)
+            } else {
+                None
+            };
+
         Ok(Self {
             project_path: project_path.to_owned(),
 
-            uniform_sources,
+            variables: config.variables.clone(),
+            env_variable_list,
+            uniform_sources: Rc::new(Mutex::new(uniform_sources)),
 
             shader_view,
 
@@ -189,6 +211,8 @@ impl Wvr {
             focused: false,
             mouse_position: (0.0, 0.0),
 
+            main_script,
+
             screenshot: config.view.screenshot,
             screenshot_frame_count: config.view.screenshot_frame_count,
             screenshot_sender,
@@ -211,7 +235,7 @@ impl Wvr {
         self.time += time_diff;
         self.beat += beat_diff;
 
-        for (_, source) in self.uniform_sources.iter_mut() {
+        for (_, source) in self.uniform_sources.lock().unwrap().iter_mut() {
             source.set_beat(self.beat, self.locked_speed);
             source.set_time(self.time, self.locked_speed);
         }
@@ -238,12 +262,46 @@ impl Wvr {
 
         self.update_time(time_diff, beat_diff);
 
+        let stage_index_list = self.shader_view.stage_index_list();
+
+        if let Some(main_script) = &mut self.main_script {
+            main_script.update();
+
+            let event_list = main_script.execute(
+                stage_index_list,
+                self.uniform_sources.clone(),
+                self.bpm,
+                self.beat,
+                beat_diff,
+                self.time,
+                time_diff,
+                self.frame_count,
+            );
+
+            if let Ok(event_list) = event_list {
+                for message in event_list {
+                    self.handle_message(display, &message)?;
+                }
+            }
+        }
+
         if !self.screenshot {
             self.shader_view.set_resolution(display, resolution)?;
         }
+
+        for (variable_name, (variable_value, variable_automation)) in &self.variables {
+            let variable_value = variable_automation
+                .apply(variable_value, self.beat)
+                .unwrap_or_else(|| variable_value.clone());
+
+            self.env_variable_list
+                .insert(variable_name.clone(), variable_value);
+        }
+
         self.shader_view.update(
             display,
-            &mut self.uniform_sources,
+            &self.env_variable_list,
+            &mut self.uniform_sources.lock().unwrap(),
             self.time,
             self.beat,
             self.frame_count,
@@ -276,13 +334,13 @@ impl Wvr {
                 .get("iChannel0")
             {
                 match final_stage_input {
-                    SampledInput::Nearest(input_name) => {
+                    InputSampler::Nearest(input_name) => {
                         currently_rendered_stage = Some(input_name.to_string())
                     }
-                    SampledInput::Linear(input_name) => {
+                    InputSampler::Linear(input_name) => {
                         currently_rendered_stage = Some(input_name.to_string())
                     }
-                    SampledInput::Mipmaps(input_name) => {
+                    InputSampler::Mipmaps(input_name) => {
                         currently_rendered_stage = Some(input_name.to_string())
                     }
                 }
@@ -319,14 +377,16 @@ impl Wvr {
             Message::Insert((input_name, input_config)) => {
                 match utils::input_from_config(
                     &self.project_path,
-                    &input_config,
-                    &input_name,
+                    input_config,
+                    input_name,
                     self.beat,
                     self.time,
                     self.playing,
                 ) {
                     Ok(input_provider) => {
                         self.uniform_sources
+                            .lock()
+                            .unwrap()
                             .insert(input_name.clone(), input_provider);
                     }
                     Err(e) => eprintln!("{:?}", e),
@@ -409,7 +469,14 @@ impl Wvr {
                             render_stage.set_filter_mode_params(filter_mode_params)
                         }
                         RenderStageUpdate::Variable(variable_name, variable_value) => {
-                            render_stage.set_variable(display, variable_name, variable_value)?;
+                            render_stage.set_variable_value(
+                                display,
+                                variable_name,
+                                variable_value,
+                            )?;
+                        }
+                        RenderStageUpdate::VariableOffset(variable_name, offset) => {
+                            render_stage.set_variable_offset(variable_name, offset)?;
                         }
                         RenderStageUpdate::VariableAutomation(
                             variable_name,
@@ -436,7 +503,10 @@ impl Wvr {
                         render_stage.set_filter_mode_params(filter_mode_params)
                     }
                     RenderStageUpdate::Variable(variable_name, variable_value) => {
-                        render_stage.set_variable(display, variable_name, variable_value)?;
+                        render_stage.set_variable_value(display, variable_name, variable_value)?;
+                    }
+                    RenderStageUpdate::VariableOffset(variable_name, offset) => {
+                        render_stage.set_variable_offset(variable_name, offset)?;
                     }
                     RenderStageUpdate::VariableAutomation(variable_name, variable_automation) => {
                         render_stage.set_variable_automation(variable_name, variable_automation)?;
@@ -453,21 +523,23 @@ impl Wvr {
             Message::AddInput(input_name, input_config) => {
                 match utils::input_from_config(
                     &self.project_path,
-                    &input_config,
-                    &input_name,
+                    input_config,
+                    input_name,
                     self.beat,
                     self.time,
                     self.playing,
                 ) {
                     Ok(input_provider) => {
                         self.uniform_sources
+                            .lock()
+                            .unwrap()
                             .insert(input_name.clone(), input_provider);
                     }
                     Err(e) => eprintln!("{:?}", e),
                 }
             }
             Message::UpdateInput(input_name, input_order) => {
-                if let Some(input) = self.uniform_sources.get_mut(input_name) {
+                if let Some(input) = self.uniform_sources.lock().unwrap().get_mut(input_name) {
                     match input_order {
                         InputUpdate::SetHeight(new_height) => {
                             input.set_property("height", &DataHolder::Int(*new_height as i32))
@@ -490,13 +562,17 @@ impl Wvr {
                 }
             }
             Message::RenameInput(old_input_name, new_input_name) => {
-                if let Some(mut input) = self.uniform_sources.remove(old_input_name) {
+                if let Some(mut input) = self.uniform_sources.lock().unwrap().remove(old_input_name)
+                {
                     input.set_name(new_input_name);
-                    self.uniform_sources.insert(new_input_name.clone(), input);
+                    self.uniform_sources
+                        .lock()
+                        .unwrap()
+                        .insert(new_input_name.clone(), input);
                 }
             }
             Message::RemoveInput(input_name) => {
-                self.uniform_sources.remove(input_name);
+                self.uniform_sources.lock().unwrap().remove(input_name);
             }
         }
 
@@ -512,7 +588,7 @@ impl Wvr {
             return;
         }
 
-        for (_input_name, source) in self.uniform_sources.iter_mut() {
+        for (_input_name, source) in self.uniform_sources.lock().unwrap().iter_mut() {
             if let Err(e) = source.stop() {
                 eprintln!("{:?}", e);
             }
@@ -529,7 +605,7 @@ impl Wvr {
             return Ok(());
         }
 
-        for (_input_name, source) in self.uniform_sources.iter_mut() {
+        for (_input_name, source) in self.uniform_sources.lock().unwrap().iter_mut() {
             source.pause()?;
         }
 
@@ -546,7 +622,7 @@ impl Wvr {
         self.last_update_time = Instant::now();
         self.update_time(0.0, 0.0);
 
-        for (_input_name, source) in self.uniform_sources.iter_mut() {
+        for (_input_name, source) in self.uniform_sources.lock().unwrap().iter_mut() {
             source.play()?;
         }
 

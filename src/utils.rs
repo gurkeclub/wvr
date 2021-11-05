@@ -16,11 +16,12 @@ use glutin::dpi::PhysicalSize;
 use glutin::window::WindowBuilder;
 use glutin::ContextBuilder;
 
-use wvr_data::config::project_config::ViewConfig;
-
 use wvr_cam::cam::CamProvider;
-use wvr_data::config::project_config::{FilterConfig, InputConfig, ProjectConfig};
-use wvr_data::InputProvider;
+use wvr_data::config::filter::FilterConfig;
+use wvr_data::config::input::InputConfig;
+use wvr_data::config::project::ProjectConfig;
+use wvr_data::config::project::ViewConfig;
+use wvr_data::types::InputProvider;
 use wvr_image::image::PictureProvider;
 use wvr_midi::midi::controller::MidiProvider;
 use wvr_video::video::VideoProvider;
@@ -202,7 +203,7 @@ pub fn input_from_config<P: AsRef<Path>>(
             height,
             speed,
         } => {
-            let path = get_path_for_resource(&project_path, &path);
+            let path = get_path_for_resource(&project_path, path);
             Box::new(VideoProvider::new(
                 &path,
                 input_name.to_owned(),
@@ -218,7 +219,7 @@ pub fn input_from_config<P: AsRef<Path>>(
             width,
             height,
         } => {
-            let path = get_path_for_resource(&project_path, &path);
+            let path = get_path_for_resource(&project_path, path);
 
             Box::new(PictureProvider::new(
                 &path,
@@ -231,7 +232,7 @@ pub fn input_from_config<P: AsRef<Path>>(
             width,
             height,
         } => {
-            let path = get_path_for_resource(&project_path, &path);
+            let path = get_path_for_resource(&project_path, path);
             Box::new(CamProvider::new(
                 &path,
                 input_name.to_owned(),
@@ -302,7 +303,7 @@ pub fn load_inputs(
 
     for (input_name, input_config) in input_list {
         let input_provider =
-            input_from_config(project_path, &input_config, &input_name, 0.0, 0.0, true)?;
+            input_from_config(project_path, input_config, input_name, 0.0, 0.0, true)?;
 
         uniform_sources.insert(input_name.clone(), input_provider);
     }
@@ -317,9 +318,17 @@ pub fn build_window(view_config: &ViewConfig, events_loop: &EventLoop<()>) -> Re
     let fullscreen = if view_config.fullscreen {
         let monitor = events_loop.primary_monitor();
         if let Some(monitor) = monitor {
-            Some(glium::glutin::window::Fullscreen::Exclusive(
+            let mut selected_monitor = Some(glium::glutin::window::Fullscreen::Exclusive(
                 monitor.video_modes().next().unwrap(),
-            ))
+            ));
+            for secondary_monitor in events_loop.available_monitors() {
+                if secondary_monitor != monitor {
+                    selected_monitor = Some(glium::glutin::window::Fullscreen::Exclusive(
+                        secondary_monitor.video_modes().next().unwrap(),
+                    ));
+                }
+            }
+            selected_monitor
         } else {
             None
         }
@@ -350,5 +359,5 @@ pub fn build_window(view_config: &ViewConfig, events_loop: &EventLoop<()>) -> Re
             ))
     };
 
-    Display::new(window, context, &events_loop).context("Failed to create the rendering window")
+    Display::new(window, context, events_loop).context("Failed to create the rendering window")
 }
